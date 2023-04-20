@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "workspaces": {
+    "workspace-id-1": {
+      "name": "Workspace 1",
+      "sources": { "source-id-1": {}, "source-id-2": {} },
+      "destinations": { "destination-id-1": {}, "destination-id-2": {} }
+    }
+  },
+  "sourceDefinitions": {},
+  "destinationDefinitions": {}
+}
