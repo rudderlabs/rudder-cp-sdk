@@ -2,54 +2,60 @@ package cpsdk
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/rudderlabs/rudder-control-plane-sdk/identity"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
-type Option func(*SDK) error
+type Option func(*ControlPlane) error
 
-var ErrIdentityAlreadySet = fmt.Errorf("cannot set both workspace and namespace identity")
+var ErrIdentityMutuallyExclusive = fmt.Errorf("cannot set both workspace and namespace identity")
 
 func WithWorkspaceIdentity(workspaceToken string) Option {
-	return func(sdk *SDK) error {
-		if sdk.namespaceIdentity != nil {
-			return ErrIdentityAlreadySet
+	return func(cp *ControlPlane) error {
+		if cp.namespaceIdentity != nil {
+			return ErrIdentityMutuallyExclusive
 		}
 
-		sdk.workspaceIdentity = &identity.Workspace{WorkspaceToken: workspaceToken}
+		cp.workspaceIdentity = &identity.Workspace{WorkspaceToken: workspaceToken}
 		return nil
 	}
 }
 
 func WithNamespaceIdentity(namespace, secret string) Option {
-	return func(sdk *SDK) error {
-		if sdk.workspaceIdentity != nil {
-			return ErrIdentityAlreadySet
+	return func(cp *ControlPlane) error {
+		if cp.workspaceIdentity != nil {
+			return ErrIdentityMutuallyExclusive
 		}
 
-		sdk.namespaceIdentity = &identity.Namespace{Namespace: namespace, Secret: secret}
+		cp.namespaceIdentity = &identity.Namespace{Namespace: namespace, Secret: secret}
 		return nil
 	}
 }
 
 func WithBaseUrl(baseUrl string) Option {
-	return func(sdk *SDK) error {
-		sdk.baseUrl = baseUrl
+	return func(cp *ControlPlane) error {
+		url, err := url.Parse(baseUrl)
+		if err != nil {
+			return fmt.Errorf("invalid base url: %w", err)
+		}
+
+		cp.baseUrl = url
 		return nil
 	}
 }
 
 func WithAdminCredentials(credentials *identity.AdminCredentials) Option {
-	return func(sdk *SDK) error {
-		sdk.adminCredentials = credentials
+	return func(cp *ControlPlane) error {
+		cp.adminCredentials = credentials
 		return nil
 	}
 }
 
 func WithLogger(log logger.Logger) Option {
-	return func(sdk *SDK) error {
-		sdk.log = log
+	return func(cp *ControlPlane) error {
+		cp.log = log
 		return nil
 	}
 }

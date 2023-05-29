@@ -1,13 +1,14 @@
-package model
+package parser
 
 import (
 	jsoniter "github.com/json-iterator/go"
+	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func ParseV2WorkspaceConfigs(data []byte) (*WorkspaceConfigs, error) {
-	res := &WorkspaceConfigs{}
+func Parse(data []byte) (*modelv2.WorkspaceConfigs, error) {
+	res := &modelv2.WorkspaceConfigs{}
 
 	if err := json.Unmarshal(data, res); err != nil {
 		return nil, err

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	cpsdk "github.com/rudderlabs/rudder-control-plane-sdk"
@@ -10,7 +11,21 @@ import (
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
+var log logger.Logger
+
 func main() {
+	// setup a logger using the rudder-go-kit package
+	c := config.New()
+	loggerFactory := logger.NewFactory(c)
+	log = loggerFactory.NewLogger()
+
+	if err := run(); err != nil {
+		log.Fatalf("main error: %v", err)
+	}
+}
+
+// setupControlPlaneSDK creates a new SDK instance using the environment variables
+func setupControlPlaneSDK() (*cpsdk.ControlPlane, error) {
 	apiUrl := os.Getenv("CPSDK_API_URL")
 	workspaceToken := os.Getenv("CPSDK_WORKSPACE_TOKEN")
 	namespace := os.Getenv("CPSDK_NAMESPACE")
@@ -18,11 +33,7 @@ func main() {
 	adminUsername := os.Getenv("CPSDK_ADMIN_USERNAME")
 	adminPassword := os.Getenv("CPSDK_ADMIN_PASSWORD")
 
-	c := config.New()
-	loggerFactory := logger.NewFactory(c)
-	var log logger.Logger = loggerFactory.NewLogger()
-
-	var options []cpsdk.Option = []cpsdk.Option{
+	options := []cpsdk.Option{
 		cpsdk.WithBaseUrl(apiUrl),
 		cpsdk.WithLogger(log),
 	}
@@ -33,7 +44,11 @@ func main() {
 		options = append(options, cpsdk.WithWorkspaceIdentity(workspaceToken))
 	}
 
-	if adminUsername != "" && adminPassword != "" {
+	if adminUsername != "" || adminPassword != "" {
+		if adminUsername == "" || adminPassword == "" {
+			return nil, fmt.Errorf("both admin username and password must be provided")
+		}
+
 		adminCredentials := &identity.AdminCredentials{
 			AdminUsername: adminUsername,
 			AdminPassword: adminPassword,
@@ -41,15 +56,21 @@ func main() {
 		options = append(options, cpsdk.WithAdminCredentials(adminCredentials))
 	}
 
-	sdk, err := cpsdk.New(options...)
-	if err != nil {
-		panic(err)
-	}
+	return cpsdk.New(options...)
+}
 
-	log.Info("Getting workspace configs")
+// run is the main function that uses the SDK
+func run() error {
+	sdk, err := setupControlPlaneSDK()
+	if err != nil {
+		return fmt.Errorf("error setting up control plane sdk: %v", err)
+	}
+	defer sdk.Close()
 
 	_, err = sdk.Client.GetWorkspaceConfigs(context.Background())
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error getting workspace configs: %v", err)
 	}
+
+	return nil
 }

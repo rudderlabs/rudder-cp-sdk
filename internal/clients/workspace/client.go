@@ -6,7 +6,8 @@ import (
 
 	"github.com/rudderlabs/rudder-control-plane-sdk/identity"
 	"github.com/rudderlabs/rudder-control-plane-sdk/internal/clients/base"
-	"github.com/rudderlabs/rudder-control-plane-sdk/model"
+	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
+	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2/parser"
 )
 
 type Client struct {
@@ -25,7 +26,7 @@ func (c *Client) Get(ctx context.Context, path string) (*http.Request, error) {
 	return req, nil
 }
 
-func (c *Client) GetWorkspaceConfigs(ctx context.Context) (*model.WorkspaceConfigs, error) {
+func (c *Client) GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error) {
 	req, err := c.Get(ctx, "/data-plane/v2/workspaceConfig")
 	if err != nil {
 		return nil, err
@@ -36,7 +37,7 @@ func (c *Client) GetWorkspaceConfigs(ctx context.Context) (*model.WorkspaceConfi
 		return nil, err
 	}
 
-	wcs, err := model.ParseV2WorkspaceConfigs(data)
+	wcs, err := parser.Parse(data)
 	if err != nil {
 		return nil, err
 	}

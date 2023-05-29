@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 type Client struct {
 	HTTPClient HTTPClient
-	BaseURL    string
+	BaseURL    *url.URL
 }
 
 type HTTPClient interface {
@@ -17,7 +18,7 @@ type HTTPClient interface {
 }
 
 func (c *Client) Url(path string) string {
-	return c.BaseURL + path
+	return c.BaseURL.JoinPath(path).String()
 }
 
 func (c *Client) Get(ctx context.Context, path string) (*http.Request, error) {

@@ -1,6 +1,5 @@
 GO=go
 LDFLAGS?=-s -w
-TESTFILE=_testok
 
 .PHONY: default
 default: lint
@@ -14,39 +13,21 @@ generate: install-tools
 	$(GO) generate ./...
 
 .PHONY: test
-test: install-tools test-run test-teardown ## Run all tests
+test: install-tools test-run ## Run all tests
 
 .PHONY: test-run
 test-run:
-ifeq ($(filter 1,$(debug) $(RUNNER_DEBUG)),)
-	$(eval TEST_CMD = gotestsum --format pkgname-and-test-fails --)
-	$(eval TEST_OPTIONS = -p=1 -v -failfast -shuffle=on -coverprofile=profile.out -covermode=count -coverpkg=./... -vet=all --timeout=15m)
-else
 	$(eval TEST_CMD = go test)
-	$(eval TEST_OPTIONS = -p=1 -v -failfast -shuffle=on -coverprofile=profile.out -covermode=count -coverpkg=./... -vet=all --timeout=15m)
-endif
+	$(eval TEST_OPTIONS = -v -count 1 -race -coverprofile cover.out --timeout=15m)
 ifdef package
-	$(TEST_CMD) $(TEST_OPTIONS) $(package) && touch $(TESTFILE) || true
+	$(TEST_CMD) $(TEST_OPTIONS) $(package)
 else
-	$(TEST_CMD) -count=1 $(TEST_OPTIONS) ./... && touch $(TESTFILE) || true
+	$(TEST_CMD) $(TEST_OPTIONS) ./...
 endif
-
-.PHONY: test-teardown
-test-teardown:
-	@if [ -f "$(TESTFILE)" ]; then \
-    	echo "Tests passed, tearing down..." ;\
-		rm -f $(TESTFILE) ;\
-		echo "mode: atomic" > coverage.txt ;\
-		find . -name "profile.out" | while read file; do grep -v 'mode: atomic' $${file} >> coverage.txt; rm -f $${file}; done ;\
-	else \
-    	rm -f coverage.txt coverage.html ; find . -name "profile.out" | xargs rm -f ;\
-		echo "Tests failed :-(" ;\
-		exit 1 ;\
-	fi
 
 .PHONY: coverage
-coverage:
-	go tool cover -html=coverage.txt -o coverage.html
+coverage: test-run
+	go tool cover -html=cover.out -o coverage.html
 
 .PHONY: test-with-coverage
 test-with-coverage: test coverage
@@ -55,7 +36,6 @@ test-with-coverage: test coverage
 install-tools:
 	go install github.com/golang/mock/mockgen@v1.6.0
 	go install mvdan.cc/gofumpt@latest
-	go install gotest.tools/gotestsum@v1.8.2
 
 .PHONY: lint
 lint: fmt ## Run linters on all go files
