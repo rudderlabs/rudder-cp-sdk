@@ -1,22 +1,28 @@
-.PHONY: help default test test-run test-teardown generate lint fmt
-
 GO=go
 LDFLAGS?=-s -w
 TESTFILE=_testok
 
+.PHONY: default
 default: lint
 
+.PHONY: help
+help: ## Show the available commands
+	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' ./Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: generate
 generate: install-tools
 	$(GO) generate ./...
 
-test: install-tools test-run test-teardown
+.PHONY: test
+test: install-tools test-run test-teardown ## Run all tests
 
-test-run: ## Run all unit tests
+.PHONY: test-run
+test-run:
 ifeq ($(filter 1,$(debug) $(RUNNER_DEBUG)),)
-	$(eval TEST_CMD = SLOW=0 gotestsum --format pkgname-and-test-fails --)
+	$(eval TEST_CMD = gotestsum --format pkgname-and-test-fails --)
 	$(eval TEST_OPTIONS = -p=1 -v -failfast -shuffle=on -coverprofile=profile.out -covermode=count -coverpkg=./... -vet=all --timeout=15m)
 else
-	$(eval TEST_CMD = SLOW=0 go test)
+	$(eval TEST_CMD = go test)
 	$(eval TEST_OPTIONS = -p=1 -v -failfast -shuffle=on -coverprofile=profile.out -covermode=count -coverpkg=./... -vet=all --timeout=15m)
 endif
 ifdef package
@@ -25,6 +31,7 @@ else
 	$(TEST_CMD) -count=1 $(TEST_OPTIONS) ./... && touch $(TESTFILE) || true
 endif
 
+.PHONY: test-teardown
 test-teardown:
 	@if [ -f "$(TESTFILE)" ]; then \
     	echo "Tests passed, tearing down..." ;\
@@ -37,14 +44,14 @@ test-teardown:
 		exit 1 ;\
 	fi
 
+.PHONY: coverage
 coverage:
 	go tool cover -html=coverage.txt -o coverage.html
 
+.PHONY: test-with-coverage
 test-with-coverage: test coverage
 
-help: ## Show the available commands
-	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' ./Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
+.PHONY: install-tools
 install-tools:
 	go install github.com/golang/mock/mockgen@v1.6.0
 	go install mvdan.cc/gofumpt@latest
