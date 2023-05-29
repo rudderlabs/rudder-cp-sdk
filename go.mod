@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/json-iterator/go v1.1.12
-	github.com/rudderlabs/rudder-go-kit v0.13.0
+	github.com/rudderlabs/rudder-go-kit v0.14.2
 	github.com/stretchr/testify v1.8.2
 )
 
