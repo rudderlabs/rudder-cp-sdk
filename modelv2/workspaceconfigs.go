@@ -31,3 +31,15 @@ type WorkspaceConfig struct {
 	SQLModelVersionSourceConnections []*SQLModelVersionSourceConnection `json:"sqlModelVersionSourceConnections"`
 	UpdatedAt                        time.Time                          `json:"updatedAt"`
 }
+
+// UpdatedAt returns the maximum UpdatedAt value of all included workspace configs.
+func (wcs *WorkspaceConfigs) UpdatedAt() time.Time {
+	var updateAt time.Time
+	for _, wc := range wcs.Workspaces {
+		if wc != nil && wc.UpdatedAt.After(updateAt) {
+			updateAt = wc.UpdatedAt
+		}
+	}
+
+	return updateAt
+}
