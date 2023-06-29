@@ -13,8 +13,6 @@ generate: install-tools
 	$(GO) generate ./...
 
 .PHONY: test
-<<<<<<< HEAD
-<<<<<<< HEAD
 test: install-tools test-run ## Run all tests
 
 .PHONY: test-run
@@ -30,31 +28,6 @@ endif
 .PHONY: coverage
 coverage: test-run
 	go tool cover -html=cover.out -o coverage.html
-=======
-test: install-tools test-run test-teardown ## Run all tests
-=======
-test: install-tools test-run ## Run all tests
->>>>>>> 17465b6 (chore: address several review comments)
-
-.PHONY: test-run
-test-run:
-	$(eval TEST_CMD = go test)
-	$(eval TEST_OPTIONS = -v -count 1 -race -coverprofile cover.out --timeout=15m)
-ifdef package
-	$(TEST_CMD) $(TEST_OPTIONS) $(package)
-else
-	$(TEST_CMD) $(TEST_OPTIONS) ./...
-endif
-
-.PHONY: coverage
-<<<<<<< HEAD
-coverage:
-	go tool cover -html=coverage.txt -o coverage.html
->>>>>>> 798bd21 (chore: cleanup PHONY targets in Makefile)
-=======
-coverage: test-run
-	go tool cover -html=cover.out -o coverage.html
->>>>>>> 17465b6 (chore: address several review comments)
 
 .PHONY: test-with-coverage
 test-with-coverage: test coverage
