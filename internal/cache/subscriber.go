@@ -1,6 +1,6 @@
 package cache
 
-import "github.com/rudderlabs/rudder-control-plane-sdk/notifications"
+import "github.com/rudderlabs/rudder-cp-sdk/notifications"
 
 // Subscriber is a subscriber to workspace config updates.
 type Subscriber struct {

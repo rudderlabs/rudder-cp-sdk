@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
-	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2/parser"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2/parser"
 	"github.com/stretchr/testify/require"
 )
 

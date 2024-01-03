@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	cpsdk "github.com/rudderlabs/rudder-control-plane-sdk"
-	"github.com/rudderlabs/rudder-control-plane-sdk/identity"
+	cpsdk "github.com/rudderlabs/rudder-cp-sdk"
+	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-go-kit/config"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )

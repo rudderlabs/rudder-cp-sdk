@@ -10,7 +10,7 @@ import (
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
-	modelv2 "github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
+	modelv2 "github.com/rudderlabs/rudder-cp-sdk/modelv2"
 )
 
 // MockClient is a mock of Client interface.

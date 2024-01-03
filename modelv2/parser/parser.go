@@ -2,7 +2,7 @@ package parser
 
 import (
 	jsoniter "github.com/json-iterator/go"
-	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary

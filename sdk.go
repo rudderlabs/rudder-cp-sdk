@@ -7,15 +7,15 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/rudderlabs/rudder-control-plane-sdk/identity"
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/cache"
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/clients/admin"
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/clients/base"
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/clients/namespace"
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/clients/workspace"
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/poller"
-	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
-	"github.com/rudderlabs/rudder-control-plane-sdk/notifications"
+	"github.com/rudderlabs/rudder-cp-sdk/identity"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/cache"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/admin"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/namespace"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/workspace"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/poller"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/notifications"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
@@ -115,7 +115,7 @@ func (cp *ControlPlane) setupPoller() error {
 		return nil
 	}
 
-	var handle = func(wc *modelv2.WorkspaceConfigs) error {
+	handle := func(wc *modelv2.WorkspaceConfigs) error {
 		cp.configsCache.Set(wc)
 		return nil
 	}
