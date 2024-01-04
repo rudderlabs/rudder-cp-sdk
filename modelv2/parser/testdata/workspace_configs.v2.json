@@ -1,5 +1,4 @@
 {
-  "version": 2,
   "workspaces": {
     "ws-1": {
       "name": "Workspace 1",

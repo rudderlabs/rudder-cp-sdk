@@ -2,7 +2,9 @@ package namespace
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"time"
 
 	"github.com/rudderlabs/rudder-control-plane-sdk/identity"
 	"github.com/rudderlabs/rudder-control-plane-sdk/internal/clients/base"
@@ -43,4 +45,8 @@ func (c *Client) GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceCon
 	}
 
 	return wcs, nil
+}
+
+func (c *Client) GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) (*modelv2.WorkspaceConfigs, error) {
+	return nil, errors.New("not implemented")
 }

@@ -17,7 +17,6 @@ func TestParse(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, wcs, &modelv2.WorkspaceConfigs{
-		Version: 2,
 		Workspaces: map[string]*modelv2.WorkspaceConfig{
 			"ws-1": {
 				Sources: map[string]*modelv2.Source{

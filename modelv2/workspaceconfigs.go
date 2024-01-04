@@ -4,9 +4,6 @@ import "time"
 
 // WorkspaceConfigs represents workspace configurations of one or more workspaces, as well as definitions shared by all of them.
 type WorkspaceConfigs struct {
-	// Version is a version number of the current workspace config format, used for backward compatibility.
-	// The current version is 2.
-	Version int `json:"version"`
 	// Workspaces is an map of workspace configurations. The key is a workspace ID.
 	Workspaces map[string]*WorkspaceConfig `json:"workspaces"`
 	// SourceDefinitions is a map of source definitions. The key is a source definition name.
@@ -30,4 +27,25 @@ type WorkspaceConfig struct {
 	SQLModelVersions                 map[string]*SQLModelVersion        `json:"sqlModelVersions"`
 	SQLModelVersionSourceConnections []*SQLModelVersionSourceConnection `json:"sqlModelVersionSourceConnections"`
 	UpdatedAt                        time.Time                          `json:"updatedAt"`
+}
+
+// UpdatedAt returns the maximum UpdatedAt value of all included workspace configs.
+func (wcs *WorkspaceConfigs) UpdatedAt() time.Time {
+	var updateAt time.Time
+	for _, wc := range wcs.Workspaces {
+		if wc != nil && wc.UpdatedAt.After(updateAt) {
+			updateAt = wc.UpdatedAt
+		}
+	}
+
+	return updateAt
+}
+
+// Empty returns an empty WorkspaceConfigs object.
+func Empty() *WorkspaceConfigs {
+	return &WorkspaceConfigs{
+		Workspaces:             make(map[string]*WorkspaceConfig),
+		SourceDefinitions:      make(map[string]*SourceDefinition),
+		DestinationDefinitions: make(map[string]*DestinationDefinition),
+	}
 }

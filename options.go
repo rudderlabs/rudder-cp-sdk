@@ -3,6 +3,7 @@ package cpsdk
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/rudderlabs/rudder-control-plane-sdk/identity"
 	"github.com/rudderlabs/rudder-go-kit/logger"
@@ -56,6 +57,16 @@ func WithAdminCredentials(credentials *identity.AdminCredentials) Option {
 func WithLogger(log logger.Logger) Option {
 	return func(cp *ControlPlane) error {
 		cp.log = log
+		return nil
+	}
+}
+
+// WithPollingInterval sets the interval at which the SDK polls for new configs.
+// If not set, the SDK will poll every 1 second.
+// If set to 0, the SDK will not poll for new configs.
+func WithPollingInterval(interval time.Duration) Option {
+	return func(cp *ControlPlane) error {
+		cp.pollingInterval = interval
 		return nil
 	}
 }
