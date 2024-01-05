@@ -9,7 +9,7 @@ import (
 )
 
 func TestWorkspaceConfigsUpdatedAt(t *testing.T) {
-	var wcs = &modelv2.WorkspaceConfigs{
+	wcs := &modelv2.WorkspaceConfigs{
 		Workspaces: map[string]*modelv2.WorkspaceConfig{
 			"ws-1": {
 				UpdatedAt: time.Date(2021, 1, 2, 0, 0, 0, 0, time.UTC),

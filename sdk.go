@@ -115,7 +115,7 @@ func (cp *ControlPlane) setupPoller() error {
 		return nil
 	}
 
-	var handle = func(wc *modelv2.WorkspaceConfigs) error {
+	handle := func(wc *modelv2.WorkspaceConfigs) error {
 		cp.configsCache.Set(wc)
 		return nil
 	}

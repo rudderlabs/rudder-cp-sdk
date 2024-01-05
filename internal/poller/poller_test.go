@@ -42,7 +42,7 @@ func TestPoller(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(len(mockedResponses))
-		var expectedResponseIndex = 0
+		expectedResponseIndex := 0
 
 		startTestPoller(t, ctx, client, func(wcs *modelv2.WorkspaceConfigs) error {
 			require.Equal(t, mockedResponses[expectedResponseIndex], wcs)
@@ -70,7 +70,7 @@ func TestPoller(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(len(mockedResponses))
-		var expectedResponseIndex = 0
+		expectedResponseIndex := 0
 
 		startTestPoller(t, ctx, client, func(wcs *modelv2.WorkspaceConfigs) error {
 			require.Equal(t, mockedResponses[expectedResponseIndex], wcs)
@@ -98,7 +98,7 @@ func TestPoller(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(len(mockedResponses))
-		var expectedResponseIndex = 0
+		expectedResponseIndex := 0
 		var hasReturnedError bool
 		// start a poller with handler that fails on first attempt and succeeds on second
 		startTestPoller(t, ctx, client, func(wcs *modelv2.WorkspaceConfigs) error {
