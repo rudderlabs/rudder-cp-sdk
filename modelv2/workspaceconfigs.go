@@ -16,7 +16,7 @@ type WorkspaceConfig struct {
 	Settings                         *Settings                          `json:"settings"`
 	Sources                          map[string]*Source                 `json:"sources"`
 	Destinations                     map[string]*Destination            `json:"destinations"`
-	Connections                      []*Connection                      `json:"connections"`
+	Connections                      map[string]*Connection             `json:"connections"`
 	Libraries                        []*Library                         `json:"libraries"`
 	WHTProjects                      map[string]*WHTProject             `json:"whtProjects"`
 	Accounts                         map[string]*Account                `json:"accounts"`
