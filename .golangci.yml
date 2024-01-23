@@ -1,0 +1,45 @@
+run:
+  timeout: 7m
+  go: '1.21'
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - unparam
+    - unconvert
+    - bodyclose
+    - decorder
+    - makezero
+    - nilnil
+    - nilerr
+    - rowserrcheck
+    - tenv
+    - wastedassign
+    - unparam
+    - misspell
+    - unconvert
+    - depguard
+    - unused
+
+issues:
+  exclude-use-default: true
+  exclude-case-sensitive: false
+  max-issues-per-linter: 50
+  max-same-issues: 10
+  new: false
+
+
+linters-settings:
+  depguard:
+    rules:
+      main:
+        files:
+          - .*
+        allow:
+          - .*
