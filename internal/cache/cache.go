@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
 	"sync"
 
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
@@ -10,7 +11,7 @@ import (
 type WorkspaceConfigCache struct {
 	configs        *modelv2.WorkspaceConfigs
 	updateLock     sync.Mutex
-	subscribers    []*Subscriber
+	subscribers    []*subscriber.Subscriber
 	subscriberLock sync.Mutex
 }
 
@@ -43,8 +44,8 @@ func (c *WorkspaceConfigCache) Set(configs *modelv2.WorkspaceConfigs) {
 	c.subscriberLock.Lock()
 	defer c.subscriberLock.Unlock()
 
-	for _, subscriber := range c.subscribers {
-		subscriber.notify(notifications.WorkspaceConfigNotification{})
+	for _, s := range c.subscribers {
+		s.Notify(notifications.WorkspaceConfigNotification{})
 	}
 }
 
@@ -86,16 +87,14 @@ func (c *WorkspaceConfigCache) merge(configs *modelv2.WorkspaceConfigs) {
 // Subscribers are notified in the order they are subscribed.
 // They can monitor for updates by reading from the notifications channel, provided by the Notifications function.
 // It is expected to handle any notifications in a timely manner, otherwise it will block the cache from updating.
-func (c *WorkspaceConfigCache) Subscribe() *Subscriber {
+func (c *WorkspaceConfigCache) Subscribe() *subscriber.Subscriber {
 	c.subscriberLock.Lock()
 	defer c.subscriberLock.Unlock()
 
-	subscriber := &Subscriber{
-		notifications: make(chan notifications.WorkspaceConfigNotification),
-	}
-	c.subscribers = append(c.subscribers, subscriber)
+	s := subscriber.New()
+	c.subscribers = append(c.subscribers, s)
 
-	return subscriber
+	return s
 }
 
 func copyConfigs(c *modelv2.WorkspaceConfigs) *modelv2.WorkspaceConfigs {

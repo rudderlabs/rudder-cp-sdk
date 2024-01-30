@@ -3,6 +3,7 @@ package cpsdk
 import (
 	"context"
 	"fmt"
+	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
 	"net/http"
 	"net/url"
 	"time"
@@ -158,6 +159,6 @@ type Subscriber interface {
 	Notifications() chan notifications.WorkspaceConfigNotification
 }
 
-func (cp *ControlPlane) Subscribe() *cache.Subscriber {
+func (cp *ControlPlane) Subscribe() *subscriber.Subscriber {
 	return cp.configsCache.Subscribe()
 }

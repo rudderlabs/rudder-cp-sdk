@@ -1,4 +1,4 @@
-package cache
+package subscriber
 
 import "github.com/rudderlabs/rudder-cp-sdk/notifications"
 
@@ -7,7 +7,13 @@ type Subscriber struct {
 	notifications chan notifications.WorkspaceConfigNotification
 }
 
-func (s *Subscriber) notify(n notifications.WorkspaceConfigNotification) {
+func New() *Subscriber {
+	return &Subscriber{
+		notifications: make(chan notifications.WorkspaceConfigNotification),
+	}
+}
+
+func (s *Subscriber) Notify(n notifications.WorkspaceConfigNotification) {
 	s.notifications <- n
 }
 
