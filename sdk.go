@@ -3,10 +3,11 @@ package cpsdk
 import (
 	"context"
 	"fmt"
-	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
 
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/cache"

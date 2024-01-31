@@ -1,8 +1,9 @@
 package cache
 
 import (
-	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
 	"sync"
+
+	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
 
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-cp-sdk/notifications"
