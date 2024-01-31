@@ -3,10 +3,9 @@ package cache
 import (
 	"sync"
 
-	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
-
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-cp-sdk/notifications"
+	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
 )
 
 type WorkspaceConfigCache struct {

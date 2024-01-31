@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
-
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/cache"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/admin"
@@ -18,6 +16,7 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/internal/poller"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-cp-sdk/notifications"
+	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
