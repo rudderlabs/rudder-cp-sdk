@@ -16,7 +16,6 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/internal/poller"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-cp-sdk/notifications"
-	"github.com/rudderlabs/rudder-cp-sdk/subscriber"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
@@ -159,6 +158,6 @@ type Subscriber interface {
 	Notifications() chan notifications.WorkspaceConfigNotification
 }
 
-func (cp *ControlPlane) Subscribe() *subscriber.Subscriber {
+func (cp *ControlPlane) Subscribe() chan notifications.WorkspaceConfigNotification {
 	return cp.configsCache.Subscribe()
 }

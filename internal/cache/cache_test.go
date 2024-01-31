@@ -30,7 +30,7 @@ func TestCacheSubscriptions(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
-		for range s.Notifications() {
+		for range s {
 			configs = append(configs, c.Get())
 			wg.Done()
 			if len(configs) == 2 {
