@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/rudderlabs/rudder-control-plane-sdk/identity"
+	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 

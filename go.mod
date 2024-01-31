@@ -1,4 +1,4 @@
-module github.com/rudderlabs/rudder-control-plane-sdk
+module github.com/rudderlabs/rudder-cp-sdk
 
 go 1.20
 
