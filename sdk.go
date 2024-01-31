@@ -158,6 +158,6 @@ type Subscriber interface {
 	Notifications() chan notifications.WorkspaceConfigNotification
 }
 
-func (cp *ControlPlane) Subscribe() *cache.Subscriber {
+func (cp *ControlPlane) Subscribe() chan notifications.WorkspaceConfigNotification {
 	return cp.configsCache.Subscribe()
 }
