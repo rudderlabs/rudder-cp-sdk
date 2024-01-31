@@ -3,8 +3,8 @@ package cache
 import (
 	"sync"
 
-	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
-	"github.com/rudderlabs/rudder-control-plane-sdk/notifications"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/notifications"
 )
 
 type WorkspaceConfigCache struct {

@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rudderlabs/rudder-control-plane-sdk/identity"
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/clients/base"
-	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
-	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2/parser"
+	"github.com/rudderlabs/rudder-cp-sdk/identity"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2/parser"
 )
 
 type Client struct {

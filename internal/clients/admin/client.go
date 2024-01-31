@@ -1,7 +1,7 @@
 package admin
 
 import (
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/clients/base"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
 )
 
 type Client struct {

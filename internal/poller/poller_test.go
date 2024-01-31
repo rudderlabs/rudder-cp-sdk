@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/poller"
-	"github.com/rudderlabs/rudder-control-plane-sdk/internal/poller/mocks"
-	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/poller"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/poller/mocks"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/stretchr/testify/require"
 )
 

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rudderlabs/rudder-control-plane-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/stretchr/testify/assert"
 )
 
