@@ -91,7 +91,7 @@ func (p *Poller) poll(ctx context.Context) error {
 
 	// only update updatedAt if we managed to handle the response
 	// so that we don't miss any updates in case of an error
-	//p.updatedAt = response.UpdatedAt()
+	// p.updatedAt = response.UpdatedAt()
 
 	return nil
 }
