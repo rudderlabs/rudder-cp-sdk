@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rudderlabs/rudder-cp-sdk/profiler"
-
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
@@ -68,9 +66,6 @@ func (p *Poller) Start(ctx context.Context) {
 }
 
 func (p *Poller) poll(ctx context.Context) error {
-	p.log.Info("Before processing config")
-	profiler.MemProfile(p.log)
-
 	var response *modelv2.WorkspaceConfigs
 	if p.updatedAt.IsZero() {
 		p.log.Debug("polling for workspace configs")
@@ -93,9 +88,6 @@ func (p *Poller) poll(ctx context.Context) error {
 	if err := p.handler(response); err != nil {
 		return fmt.Errorf("failed to handle workspace configs: %w", err)
 	}
-
-	p.log.Info("After processing config")
-	profiler.MemProfile(p.log)
 
 	// only update updatedAt if we managed to handle the response
 	// so that we don't miss any updates in case of an error
