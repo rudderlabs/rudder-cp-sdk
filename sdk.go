@@ -3,9 +3,10 @@ package cpsdk
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/valyala/fasthttp"
 
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/cache"
@@ -27,7 +28,7 @@ type ControlPlane struct {
 	namespaceIdentity *identity.Namespace
 	adminCredentials  *identity.AdminCredentials
 
-	httpClient RequestDoer
+	httpClient *fasthttp.Client
 
 	Client      Client
 	AdminClient *admin.Client
@@ -44,10 +45,6 @@ type ControlPlane struct {
 type Client interface {
 	GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error)
 	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) (*modelv2.WorkspaceConfigs, error)
-}
-
-type RequestDoer interface {
-	Do(req *http.Request) (*http.Response, error)
 }
 
 func New(options ...Option) (*ControlPlane, error) {
@@ -78,7 +75,20 @@ func New(options ...Option) (*ControlPlane, error) {
 
 func (cp *ControlPlane) setupClients() error {
 	if cp.httpClient == nil {
-		cp.httpClient = http.DefaultClient
+		cp.httpClient = &fasthttp.Client{
+			ReadTimeout:                   500 * time.Millisecond,
+			WriteTimeout:                  500 * time.Millisecond,
+			MaxIdleConnDuration:           time.Hour,
+			NoDefaultUserAgentHeader:      true, // Don't send: User-Agent: fasthttp
+			DisableHeaderNamesNormalizing: true, // If you set the case on your headers correctly you can enable this
+			DisablePathNormalizing:        true,
+			// increase DNS cache time to an hour instead of default minute
+			MaxConnsPerHost: 5000,
+			Dial: (&fasthttp.TCPDialer{
+				Concurrency:      0,
+				DNSCacheDuration: time.Hour,
+			}).Dial,
+		}
 	}
 
 	baseClient := &base.Client{HTTPClient: cp.httpClient, BaseURL: cp.baseUrl}

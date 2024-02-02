@@ -59,3 +59,7 @@ lint: fmt ## Run linters on all go files
 .PHONY: fmt
 fmt: install-tools ## Formats all go files
 	gofumpt -l -w -extra  .
+
+.PHONY: bench
+bench:
+	go test -bench=. -benchmem ./benchmark

@@ -3,8 +3,9 @@ package workspace
 import (
 	"context"
 	"errors"
-	"net/http"
 	"time"
+
+	"github.com/valyala/fasthttp"
 
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
@@ -18,13 +19,13 @@ type Client struct {
 	Identity *identity.Workspace
 }
 
-func (c *Client) Get(ctx context.Context, path string) (*http.Request, error) {
+func (c *Client) Get(ctx context.Context, path string) (*fasthttp.Request, error) {
 	req, err := c.Client.Get(ctx, path)
 	if err != nil {
 		return nil, err
 	}
 
-	req.SetBasicAuth(c.Identity.WorkspaceToken, "")
+	req.Header.Set("Authorization", "Basic "+c.Identity.WorkspaceToken)
 	return req, nil
 }
 

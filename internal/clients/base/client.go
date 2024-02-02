@@ -3,13 +3,14 @@ package base
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/valyala/fasthttp"
 )
 
 type Client struct {
-	HTTPClient HTTPClient
+	HTTPClient *fasthttp.Client
 	BaseURL    *url.URL
 }
 
@@ -21,31 +22,45 @@ func (c *Client) Url(path string) string {
 	return c.BaseURL.JoinPath(path).String()
 }
 
-func (c *Client) Get(ctx context.Context, path string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", c.Url(path), nil)
-	if err != nil {
-		return nil, err
-	}
+func (c *Client) Get(ctx context.Context, path string) (*fasthttp.Request, error) {
+	req := fasthttp.AcquireRequest()
+	req.SetRequestURI(c.Url(path))
+	req.Header.SetMethod(fasthttp.MethodGet)
 	req.Header.Set("Content-Type", "application/json")
-
 	return req, nil
 }
 
-func (c *Client) Send(req *http.Request) ([]byte, error) {
-	res, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
+func (c *Client) Send(req *fasthttp.Request) ([]byte, error) {
+	defer fasthttp.ReleaseRequest(req)
 
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
-	}
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(resp)
 
-	data, err := io.ReadAll(res.Body)
+	err := c.HTTPClient.Do(req, resp)
 	if err != nil {
 		return nil, err
 	}
 
-	return data, nil
+	if resp.StatusCode() != fasthttp.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
+	}
+
+	return resp.Body(), nil
+
+	//res, err := c.HTTPClient.Do(req)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer res.Body.Close()
+	//
+	//if res.StatusCode != http.StatusOK {
+	//	return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+	//}
+	//
+	//data, err := io.ReadAll(res.Body)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//return data, nil
 }
