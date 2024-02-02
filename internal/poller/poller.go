@@ -53,13 +53,14 @@ func New(handler WorkspaceConfigHandler, opts ...Option) (*Poller, error) {
 func (p *Poller) Start(ctx context.Context) {
 	go func() {
 		for {
+			if err := p.poll(ctx); err != nil {
+				p.log.Errorf("failed to poll for workspace configs: %v", err)
+			}
+
 			select {
 			case <-ctx.Done():
 				return
 			case <-time.After(p.interval):
-				if err := p.poll(ctx); err != nil {
-					p.log.Errorf("failed to poll for workspace configs: %v", err)
-				}
 			}
 		}
 	}()
