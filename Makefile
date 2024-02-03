@@ -63,3 +63,5 @@ fmt: install-tools ## Formats all go files
 .PHONY: bench
 bench:
 	go test -bench=. -benchmem ./benchmark
+	go test -bench=. -benchmem ./linter
+
