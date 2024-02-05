@@ -1,6 +1,8 @@
 module github.com/rudderlabs/rudder-control-plane-sdk
 
-go 1.20
+go 1.21
+
+toolchain go1.21.3
 
 require (
 	github.com/golang/mock v1.6.0
