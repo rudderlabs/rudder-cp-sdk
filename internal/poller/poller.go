@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
@@ -19,11 +18,11 @@ type Poller struct {
 	log       logger.Logger
 }
 
-type WorkspaceConfigHandler func(*modelv2.WorkspaceConfigs) error
+type WorkspaceConfigHandler func([]byte) error
 
 type Client interface {
-	GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error)
-	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAt time.Time) (*modelv2.WorkspaceConfigs, error)
+	GetWorkspaceConfigs(ctx context.Context) ([]byte, error)
+	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAt time.Time) ([]byte, error)
 }
 
 func New(handler WorkspaceConfigHandler, opts ...Option) (*Poller, error) {
@@ -66,32 +65,5 @@ func (p *Poller) Start(ctx context.Context) {
 }
 
 func (p *Poller) poll(ctx context.Context) error {
-	var response *modelv2.WorkspaceConfigs
-	if p.updatedAt.IsZero() {
-		p.log.Debug("polling for workspace configs")
-		wcs, err := p.client.GetWorkspaceConfigs(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to get workspace configs: %w", err)
-		}
-
-		response = wcs
-	} else {
-		p.log.Debugf("polling for workspace configs updated after %v", p.updatedAt)
-		wcs, err := p.client.GetUpdatedWorkspaceConfigs(ctx, p.updatedAt)
-		if err != nil {
-			return fmt.Errorf("failed to get updated workspace configs: %w", err)
-		}
-
-		response = wcs
-	}
-
-	if err := p.handler(response); err != nil {
-		return fmt.Errorf("failed to handle workspace configs: %w", err)
-	}
-
-	// only update updatedAt if we managed to handle the response
-	// so that we don't miss any updates in case of an error
-	// p.updatedAt = response.UpdatedAt()
-
 	return nil
 }

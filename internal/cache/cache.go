@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2/parser"
 	"sync"
 
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
@@ -35,7 +36,9 @@ func (c *WorkspaceConfigCache) Get() *modelv2.WorkspaceConfigs {
 // If a workspace config is nil in input, it will not be updated.
 // Source and destination definitions are merged without removing any missing definitions.
 // It notifies all subscribers of the update.
-func (c *WorkspaceConfigCache) Set(configs *modelv2.WorkspaceConfigs) {
+func (c *WorkspaceConfigCache) Set(data []byte) {
+	configs, _ := parser.Parse(data)
+
 	c.updateLock.Lock()
 	c.merge(configs)
 	c.updateLock.Unlock()

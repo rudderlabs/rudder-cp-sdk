@@ -14,7 +14,6 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/namespace"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/workspace"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/poller"
-	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-cp-sdk/notifications"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
@@ -42,8 +41,8 @@ type ControlPlane struct {
 }
 
 type Client interface {
-	GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error)
-	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) (*modelv2.WorkspaceConfigs, error)
+	GetWorkspaceConfigs(ctx context.Context) ([]byte, error)
+	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) ([]byte, error)
 }
 
 type RequestDoer interface {
@@ -115,7 +114,7 @@ func (cp *ControlPlane) setupPoller() error {
 		return nil
 	}
 
-	handle := func(wc *modelv2.WorkspaceConfigs) error {
+	handle := func(wc []byte) error {
 		cp.configsCache.Set(wc)
 		return nil
 	}
@@ -146,12 +145,8 @@ func (cp *ControlPlane) Close() {
 // GetWorkspaceConfigs returns the latest workspace configs.
 // If polling is enabled, this will return the cached configs, if they have been retrieved at least once.
 // Otherwise, it will make a request to the control plane to get the latest configs.
-func (cp *ControlPlane) GetWorkspaceConfigs() (*modelv2.WorkspaceConfigs, error) {
-	if cp.poller != nil {
-		return cp.configsCache.Get(), nil
-	} else {
-		return cp.Client.GetWorkspaceConfigs(context.Background())
-	}
+func (cp *ControlPlane) GetWorkspaceConfigs() ([]byte, error) {
+	return cp.Client.GetWorkspaceConfigs(context.Background())
 }
 
 type Subscriber interface {

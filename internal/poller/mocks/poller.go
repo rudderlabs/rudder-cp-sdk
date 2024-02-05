@@ -10,7 +10,6 @@ import (
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
-	modelv2 "github.com/rudderlabs/rudder-cp-sdk/modelv2"
 )
 
 // MockClient is a mock of Client interface.
@@ -37,10 +36,10 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // GetUpdatedWorkspaceConfigs mocks base method.
-func (m *MockClient) GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAt time.Time) (*modelv2.WorkspaceConfigs, error) {
+func (m *MockClient) GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAt time.Time) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUpdatedWorkspaceConfigs", ctx, updatedAt)
-	ret0, _ := ret[0].(*modelv2.WorkspaceConfigs)
+	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -52,10 +51,10 @@ func (mr *MockClientMockRecorder) GetUpdatedWorkspaceConfigs(ctx, updatedAt inte
 }
 
 // GetWorkspaceConfigs mocks base method.
-func (m *MockClient) GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error) {
+func (m *MockClient) GetWorkspaceConfigs(ctx context.Context) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetWorkspaceConfigs", ctx)
-	ret0, _ := ret[0].(*modelv2.WorkspaceConfigs)
+	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
