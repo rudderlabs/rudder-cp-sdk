@@ -43,6 +43,7 @@ type ControlPlane struct {
 
 type Client interface {
 	GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error)
+	GetRawWorkspaceConfigs(ctx context.Context) ([]byte, error)
 	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) (*modelv2.WorkspaceConfigs, error)
 }
 
@@ -152,6 +153,12 @@ func (cp *ControlPlane) GetWorkspaceConfigs() (*modelv2.WorkspaceConfigs, error)
 	} else {
 		return cp.Client.GetWorkspaceConfigs(context.Background())
 	}
+}
+
+// GetRawWorkspaceConfigs returns the raw workspace configs.
+// Currently, it does not support for incremental updates.
+func (cp *ControlPlane) GetRawWorkspaceConfigs() ([]byte, error) {
+	return cp.Client.GetRawWorkspaceConfigs(context.Background())
 }
 
 type Subscriber interface {
