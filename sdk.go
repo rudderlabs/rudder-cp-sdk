@@ -155,8 +155,7 @@ func (cp *ControlPlane) GetWorkspaceConfigs() (*modelv2.WorkspaceConfigs, error)
 	}
 }
 
-// GetRawWorkspaceConfigs returns the raw workspace configs.
-// Currently, it does not support for incremental updates.
+// GetRawWorkspaceConfigs returns the raw workspace configs. It does not support for incremental updates.
 func (cp *ControlPlane) GetRawWorkspaceConfigs() ([]byte, error) {
 	return cp.Client.GetRawWorkspaceConfigs(context.Background())
 }

@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/rudderlabs/rudder-go-kit/httputil"
 )
 
 type Client struct {
@@ -36,7 +38,9 @@ func (c *Client) Send(req *http.Request) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer func() {
+		httputil.CloseResponse(res)
+	}()
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
