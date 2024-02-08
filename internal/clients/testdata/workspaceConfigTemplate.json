@@ -1,0 +1,117 @@
+{
+  "workspaces": {
+    "{{.workspaceId}}": {
+      "settings": {
+        "dataRetention": {
+          "disableReportingPii": true,
+          "storagePreferences": {
+            "procErrors": true,
+            "gatewayDumps": true
+          },
+          "useSelfStorage": false,
+          "retentionPeriod": "default"
+        }
+      },
+      "sources": {
+        "{{.sourceID}}": {
+          "name": "Dev Integration Test 1",
+          "writeKey": "{{.writeKey}}",
+          "enabled": true,
+          "deleted": false,
+          "config": {},
+          "transient": false,
+          "sourceDefinitionName": "HTTP",
+          "createdAt": "2021-08-27T06:33:00.305Z",
+          "updatedAt": "2021-08-27T06:33:00.305Z"
+        }
+      },
+      "destinations": {
+        "{{.destinationID}}": {
+          "name": "Des WebHook Integration Test 1",
+          "enabled": true,
+          "config": {
+            "webhookUrl": "{{.webhookUrl}}",
+            "webhookMethod": "POST"
+          },
+          "destinationDefinitionName": "WEBHOOK",
+          "deleted": false
+        }
+      },
+      "connections": {
+        "xxxyyyzzP9kQfzOoKd1tuxchYAG": {
+          "sourceId": "xxxyyyzzEaEurW247ad9WYZLUyk",
+          "destinationId": "xxxyyyzzP9kQfzOoKd1tuxchYAG",
+          "enabled": true,
+          "ProcessorEnabled": true
+        }
+      },
+      "libraries": [],
+      "whtProjects": {},
+      "accounts": {},
+      "transformations": {
+        "23VJjP3bbHMzUhWjI7bvNL5S9xx": {
+          "versionId": "23hZ5VLGt0Yl7Hxk9ysBGi5baud",
+          "config": {},
+          "id": "23VJjP3bbHMzUhWjI7bvNL5S9xx"
+        }
+      },
+      "trackingPlans": {},
+      "resources": {},
+      "sqlModelVersions": {},
+      "sqlModelVersionSourceConnections": [],
+      "updatedAt": "{{.updatedAt}}"
+    }
+  },
+  "sourceDefinitions": {
+    "xxxyyyzzpWDzNxgGUYzq9sZdZZB": {
+      "name": "HTTP",
+      "displayName": "HTTP",
+      "category": ""
+    }
+  },
+  "destinationDefinitions": {
+    "xxxyyyzzSOU9pLRavMf0GuVnWV3": {
+      "name": "WEBHOOK",
+      "displayName": "Webhook",
+      "category": null,
+      "config": {
+        "destConfig": {
+          "defaultConfig": [
+            "webhookUrl",
+            "webhookMethod",
+            "headers"
+          ]
+        },
+        "secretKeys": [
+          "headers.to"
+        ],
+        "excludeKeys": [],
+        "includeKeys": [],
+        "transformAt": "processor",
+        "transformAtV1": "processor",
+        "supportedSourceTypes": [
+          "android",
+          "ios",
+          "web",
+          "unity",
+          "amp",
+          "cloud",
+          "warehouse",
+          "reactnative",
+          "flutter"
+        ],
+        "supportedMessageTypes": [
+          "alias",
+          "group",
+          "identify",
+          "page",
+          "screen",
+          "track"
+        ],
+        "saveDestinationResponse": false
+      },
+      "createdAt": "2020-03-16T19:25:28.141Z",
+      "updatedAt": "2021-08-26T07:06:01.445Z"
+    }
+  }
+}

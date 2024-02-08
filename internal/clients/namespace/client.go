@@ -2,8 +2,8 @@ package namespace
 
 import (
 	"context"
-	"errors"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
@@ -48,5 +48,27 @@ func (c *Client) GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceCon
 }
 
 func (c *Client) GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) (*modelv2.WorkspaceConfigs, error) {
-	return nil, errors.New("not implemented")
+	u := url.URL{}
+	u.Path = "/data-plane/v2/namespaces/" + c.Identity.Namespace + "/config"
+
+	values := u.Query()
+	values.Add("updatedAfter", updatedAfter.Format(base.UpdatedAfterTimeFormat))
+	u.RawQuery = values.Encode()
+
+	req, err := c.Get(ctx, u.String())
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := c.Send(req)
+	if err != nil {
+		return nil, err
+	}
+
+	wcs, err := parser.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return wcs, nil
 }
