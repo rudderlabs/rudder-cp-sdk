@@ -4,7 +4,7 @@ import "time"
 
 // WorkspaceConfigs represents workspace configurations of one or more workspaces, as well as definitions shared by all of them.
 type WorkspaceConfigs struct {
-	// Workspaces is an map of workspace configurations. The key is a workspace ID.
+	// Workspaces is a map of workspace configurations. The key is a workspace ID.
 	Workspaces map[string]*WorkspaceConfig `json:"workspaces"`
 	// SourceDefinitions is a map of source definitions. The key is a source definition name.
 	SourceDefinitions map[string]*SourceDefinition `json:"sourceDefinitions"`
