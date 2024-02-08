@@ -92,10 +92,7 @@ func (p *Poller) poll(ctx context.Context) error {
 
 	// only update updatedAt if we managed to handle the response
 	// so that we don't miss any updates in case of an error
-	result := gjson.GetBytes(response, "#.workspaces.@values.#.updatedAt")
-	if len(result.String()) > 0 {
-		result = gjson.Get(result.String(), "0.@values")
-	}
+	result := gjson.GetBytes(response, "#.workspaces.@values.#.updatedAt|0")
 	for _, v := range result.Array() {
 		if v.Time().After(p.updatedAt) {
 			p.updatedAt = v.Time()
