@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"context"
 	"fmt"
@@ -67,10 +68,11 @@ func run() error {
 	}
 	defer sdk.Close()
 
-	_, err = sdk.Client.GetWorkspaceConfigs(context.Background())
+	_, err = sdk.client.GetWorkspaceConfigs(context.Background())
 	if err != nil {
 		return fmt.Errorf("error getting workspace configs: %v", err)
 	}
 
 	return nil
 }
+*/

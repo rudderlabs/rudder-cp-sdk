@@ -1,5 +1,6 @@
 package cache
 
+/*
 import (
 	"sync"
 
@@ -118,3 +119,4 @@ func copyConfigs(c *modelv2.WorkspaceConfigs) *modelv2.WorkspaceConfigs {
 
 	return wc
 }
+*/

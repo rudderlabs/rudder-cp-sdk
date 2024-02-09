@@ -1,5 +1,6 @@
 package cache_test
 
+/*
 import (
 	"sync"
 	"testing"
@@ -125,3 +126,4 @@ var expectedMergedConfig = &modelv2.WorkspaceConfigs{
 		"ws-4": updatedConfig.Workspaces["ws-4"],
 	},
 }
+*/

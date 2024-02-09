@@ -1,16 +1,5 @@
 package poller
 
-import (
-	"context"
-	"encoding/json"
-	"testing"
-	"time"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
-)
-
 //func TestPollerNew(t *testing.T) {
 //	t.Run("should return error if handler is nil", func(t *testing.T) {
 //		p, err := poller.New(nil)
@@ -116,10 +105,11 @@ import (
 //	})
 //}
 
+/*
 func TestPollerUpdatedAtParsing(t *testing.T) {
-	mockedResponse := []*modelv2.WorkspaceConfigs{
+	mockedResponse := []*model.WorkspaceConfigs{
 		{
-			Workspaces: map[string]*modelv2.WorkspaceConfig{
+			Workspaces: map[string]*model.WorkspaceConfig{
 				"wc-1": {UpdatedAt: time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)},
 				"wc-2": {UpdatedAt: time.Date(2009, 11, 21, 20, 34, 58, 651387237, time.UTC)},
 				"wc-3": {UpdatedAt: time.Date(2009, 11, 19, 20, 34, 58, 651387237, time.UTC)},
@@ -163,7 +153,7 @@ func (f *fakeClient) GetUpdatedWorkspaceConfigs(_ context.Context, _ time.Time) 
 	return f.data, nil
 }
 
-//func startTestPoller(t *testing.T, ctx context.Context, client poller.Client, handler poller.WorkspaceConfigHandler) {
+//func startTestPoller(t *testing.T, ctx context.Context, client poller.client, handler poller.WorkspaceConfigHandler) {
 //	p, err := poller.New(handler,
 //		poller.WithClient(client),
 //		poller.WithPollingInterval(1*time.Millisecond),
@@ -194,3 +184,4 @@ func (f *fakeClient) GetUpdatedWorkspaceConfigs(_ context.Context, _ time.Time) 
 //		},
 //	},
 //}
+*/

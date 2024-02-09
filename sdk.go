@@ -7,19 +7,25 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/rudderlabs/rudder-cp-sdk/identity"
-	"github.com/rudderlabs/rudder-cp-sdk/internal/cache"
-	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/admin"
-	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
-	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/namespace"
-	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/workspace"
-	"github.com/rudderlabs/rudder-cp-sdk/internal/poller"
-	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
-	"github.com/rudderlabs/rudder-cp-sdk/notifications"
+	"github.com/rudderlabs/rudder-cp-sdk/client/admin"
+	"github.com/rudderlabs/rudder-cp-sdk/client/base"
+	"github.com/rudderlabs/rudder-cp-sdk/client/namespace"
+	"github.com/rudderlabs/rudder-cp-sdk/client/workspace"
+	whttp "github.com/rudderlabs/rudder-cp-sdk/client/wrapper/http"
+	"github.com/rudderlabs/rudder-cp-sdk/model/identity"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
 const defaultBaseUrl = "https://api.rudderstack.com"
+
+type RequestDoer interface {
+	Get(_ context.Context, endpoint string, headers map[string]string) (int, []byte, error)
+}
+
+type Client interface {
+	GetWorkspaceConfigs(ctx context.Context) ([]byte, error)
+	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) ([]byte, error)
+}
 
 type ControlPlane struct {
 	baseUrl           *url.URL
@@ -27,39 +33,20 @@ type ControlPlane struct {
 	namespaceIdentity *identity.Namespace
 	adminCredentials  *identity.AdminCredentials
 
-	httpClient RequestDoer
+	client      Client
+	adminClient *admin.Client
+	requestDoer RequestDoer
 
-	Client      Client
-	AdminClient *admin.Client
+	// @TODO polling?
+	// @TODO caching?
 
 	log logger.Logger
-
-	configsCache *cache.WorkspaceConfigCache
-
-	pollingInterval time.Duration
-	poller          *poller.Poller
-	pollerStop      context.CancelFunc
-}
-
-type Client interface {
-	GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error)
-	GetRawWorkspaceConfigs(ctx context.Context) ([]byte, error)
-	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) (*modelv2.WorkspaceConfigs, error)
-}
-
-type RequestDoer interface {
-	Do(req *http.Request) (*http.Response, error)
 }
 
 func New(options ...Option) (*ControlPlane, error) {
-	url, _ := url.Parse(defaultBaseUrl)
 	cp := &ControlPlane{
-		baseUrl:         url,
-		log:             logger.NOP,
-		pollingInterval: 1 * time.Second,
-		configsCache:    &cache.WorkspaceConfigCache{},
+		log: logger.NOP,
 	}
-
 	for _, option := range options {
 		if err := option(cp); err != nil {
 			return nil, err
@@ -70,23 +57,26 @@ func New(options ...Option) (*ControlPlane, error) {
 		return nil, err
 	}
 
-	if err := cp.setupPoller(); err != nil {
-		return nil, err
-	}
+	//if err := cp.setupPoller(); err != nil {
+	//	return nil, err
+	//}
 
 	return cp, nil
 }
 
 func (cp *ControlPlane) setupClients() error {
-	if cp.httpClient == nil {
-		cp.httpClient = http.DefaultClient
+	if cp.requestDoer == nil {
+		cp.requestDoer = whttp.New(http.DefaultClient)
 	}
 
-	baseClient := &base.Client{HTTPClient: cp.httpClient, BaseURL: cp.baseUrl}
+	baseClient, err := base.New(defaultBaseUrl, cp.requestDoer)
+	if err != nil {
+		return fmt.Errorf("could not create base client: %w", err)
+	}
 
 	// set admin client
 	if cp.adminCredentials != nil {
-		cp.AdminClient = &admin.Client{
+		cp.adminClient = &admin.Client{
 			Client:   baseClient,
 			Username: cp.adminCredentials.AdminUsername,
 			Password: cp.adminCredentials.AdminPassword,
@@ -95,22 +85,16 @@ func (cp *ControlPlane) setupClients() error {
 
 	// set client based on identity
 	if cp.workspaceIdentity != nil {
-		cp.Client = &workspace.Client{
-			Client:   baseClient,
-			Identity: cp.workspaceIdentity,
-		}
+		cp.client, err = workspace.New(baseClient, *cp.workspaceIdentity)
 	} else if cp.namespaceIdentity != nil {
-		cp.Client = &namespace.Client{
-			Client:   baseClient,
-			Identity: cp.namespaceIdentity,
-		}
+		cp.client, err = namespace.New(baseClient, *cp.namespaceIdentity)
 	} else {
 		return fmt.Errorf("workspace or namespace identity must be set")
 	}
-
-	return nil
+	return err
 }
 
+/*
 func (cp *ControlPlane) setupPoller() error {
 	if cp.pollingInterval == 0 {
 		return nil
@@ -122,7 +106,7 @@ func (cp *ControlPlane) setupPoller() error {
 	}
 
 	p, err := poller.New(handle,
-		poller.WithClient(cp.Client),
+		poller.WithClient(cp.client),
 		poller.WithPollingInterval(cp.pollingInterval),
 		poller.WithLogger(cp.log))
 	if err != nil {
@@ -151,14 +135,14 @@ func (cp *ControlPlane) GetWorkspaceConfigs() (*modelv2.WorkspaceConfigs, error)
 	if cp.poller != nil {
 		return cp.configsCache.Get(), nil
 	} else {
-		return cp.Client.GetWorkspaceConfigs(context.Background())
+		return cp.client.GetWorkspaceConfigs(context.Background())
 	}
 }
 
 // GetRawWorkspaceConfigs returns the raw workspace configs.
 // Currently, it does not support for incremental updates.
 func (cp *ControlPlane) GetRawWorkspaceConfigs() ([]byte, error) {
-	return cp.Client.GetRawWorkspaceConfigs(context.Background())
+	return cp.client.GetRawWorkspaceConfigs(context.Background())
 }
 
 type Subscriber interface {
@@ -166,5 +150,7 @@ type Subscriber interface {
 }
 
 func (cp *ControlPlane) Subscribe() chan notifications.WorkspaceConfigNotification {
+	// @TODO: someone subscribes and we don't have a poller, create one
 	return cp.configsCache.Subscribe()
 }
+*/
