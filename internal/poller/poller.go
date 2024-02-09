@@ -13,8 +13,8 @@ type Poller struct {
 }
 
 type (
-	Caller  func(ctx context.Context) (any, error)
-	Handler func(any, error)
+	Caller  func(ctx context.Context) ([]byte, error)
+	Handler func([]byte, error)
 )
 
 func New(caller Caller, handler Handler, opts ...Option) (*Poller, error) {

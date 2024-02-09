@@ -9,6 +9,7 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/client/namespace"
 	"github.com/rudderlabs/rudder-cp-sdk/client/workspace"
 	whttp "github.com/rudderlabs/rudder-cp-sdk/client/wrapper/http"
+	"github.com/rudderlabs/rudder-cp-sdk/internal/poller"
 	"github.com/rudderlabs/rudder-cp-sdk/model/identity"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
@@ -33,15 +34,17 @@ type ControlPlane struct {
 	client      Client
 	requestDoer RequestDoer
 
-	// @TODO polling?
-	// @TODO caching?
+	pollingInterval time.Duration
+	poller          *poller.Poller
+	pollerStop      func()
 
 	log logger.Logger
 }
 
 func New(options ...Option) (*ControlPlane, error) {
 	cp := &ControlPlane{
-		log: logger.NOP,
+		log:        logger.NOP,
+		pollerStop: func() {},
 	}
 	for _, option := range options {
 		if err := option(cp); err != nil {
@@ -53,9 +56,9 @@ func New(options ...Option) (*ControlPlane, error) {
 		return nil, err
 	}
 
-	//if err := cp.setupPoller(); err != nil {
-	//	return nil, err
-	//}
+	if err := cp.setupPoller(); err != nil {
+		return nil, err
+	}
 
 	return cp, nil
 }
@@ -82,21 +85,24 @@ func (cp *ControlPlane) setupClients() error {
 	return err
 }
 
-/*
 func (cp *ControlPlane) setupPoller() error {
 	if cp.pollingInterval == 0 {
 		return nil
 	}
 
-	handle := func(wc *modelv2.WorkspaceConfigs) error {
-		cp.configsCache.Set(wc)
-		return nil
+	caller := func(ctx context.Context) ([]byte, error) {
+		return cp.client.GetWorkspaceConfigs(ctx)
 	}
 
-	p, err := poller.New(handle,
-		poller.WithClient(cp.client),
+	handler := func(data []byte, err error) {
+		// @TODO send to subscribers here
+		// @TODO if cache is enabled then also do the parsing
+		// @TODO pass favourite parser via options
+	}
+
+	p, err := poller.New(caller, handler,
 		poller.WithPollingInterval(cp.pollingInterval),
-		poller.WithLogger(cp.log))
+	)
 	if err != nil {
 		return err
 	}
@@ -111,34 +117,22 @@ func (cp *ControlPlane) setupPoller() error {
 
 // Close stops any background processes such as polling for workspace configs.
 func (cp *ControlPlane) Close() {
-	if cp.poller != nil {
-		cp.pollerStop()
-	}
+	cp.pollerStop()
 }
 
 // GetWorkspaceConfigs returns the latest workspace configs.
 // If polling is enabled, this will return the cached configs, if they have been retrieved at least once.
 // Otherwise, it will make a request to the control plane to get the latest configs.
-func (cp *ControlPlane) GetWorkspaceConfigs() (*modelv2.WorkspaceConfigs, error) {
-	if cp.poller != nil {
-		return cp.configsCache.Get(), nil
-	} else {
-		return cp.client.GetWorkspaceConfigs(context.Background())
-	}
+func (cp *ControlPlane) GetWorkspaceConfigs(ctx context.Context) ([]byte, error) {
+	// @TODO add GetWorkspaceConfigs and GetRawWorkspaceConfigs
+	// @TODO the non-raw version uses the cache, the other one does not
+	return cp.client.GetWorkspaceConfigs(ctx)
 }
 
-// GetRawWorkspaceConfigs returns the raw workspace configs.
-// Currently, it does not support for incremental updates.
-func (cp *ControlPlane) GetRawWorkspaceConfigs() ([]byte, error) {
-	return cp.client.GetRawWorkspaceConfigs(context.Background())
-}
-
-type Subscriber interface {
-	Notifications() chan notifications.WorkspaceConfigNotification
-}
-
-func (cp *ControlPlane) Subscribe() chan notifications.WorkspaceConfigNotification {
+// Subscribe @TODO SubscribeRaw?
+// @TODO rename to SubscribeToWorkspaceConfigs
+func (cp *ControlPlane) Subscribe() chan []byte {
 	// @TODO: someone subscribes and we don't have a poller, create one
-	return cp.configsCache.Subscribe()
+	// return cp.configsCache.Subscribe(
+	return nil // @TODO implement
 }
-*/
