@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rudderlabs/rudder-cp-sdk/client/internal/base"
 	"github.com/rudderlabs/rudder-cp-sdk/model/identity"
 )
 
@@ -19,13 +20,13 @@ type Client struct {
 	identity  identity.Namespace
 }
 
-func New(apiCaller getter, identity identity.Namespace) (*Client, error) {
-	if apiCaller == nil {
-		return nil, errors.New("getter is required")
+func New(baseURL string, apiCaller getter, identity identity.Namespace) (*Client, error) {
+	c, err := base.New(baseURL, apiCaller)
+	if err != nil {
+		return nil, err
 	}
-
 	return &Client{
-		apiCaller: apiCaller,
+		apiCaller: c,
 		identity:  identity,
 	}, nil
 }

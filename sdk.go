@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
-	"github.com/rudderlabs/rudder-cp-sdk/client/admin"
-	"github.com/rudderlabs/rudder-cp-sdk/client/base"
 	"github.com/rudderlabs/rudder-cp-sdk/client/namespace"
 	"github.com/rudderlabs/rudder-cp-sdk/client/workspace"
 	whttp "github.com/rudderlabs/rudder-cp-sdk/client/wrapper/http"
@@ -28,13 +25,12 @@ type Client interface {
 }
 
 type ControlPlane struct {
-	baseUrl           *url.URL
+	baseUrl           string
 	workspaceIdentity *identity.Workspace
 	namespaceIdentity *identity.Namespace
 	adminCredentials  *identity.AdminCredentials
 
 	client      Client
-	adminClient *admin.Client
 	requestDoer RequestDoer
 
 	// @TODO polling?
@@ -69,25 +65,17 @@ func (cp *ControlPlane) setupClients() error {
 		cp.requestDoer = whttp.New(http.DefaultClient)
 	}
 
-	baseClient, err := base.New(defaultBaseUrl, cp.requestDoer)
-	if err != nil {
-		return fmt.Errorf("could not create base client: %w", err)
-	}
-
-	// set admin client
-	if cp.adminCredentials != nil {
-		cp.adminClient = &admin.Client{
-			Client:   baseClient,
-			Username: cp.adminCredentials.AdminUsername,
-			Password: cp.adminCredentials.AdminPassword,
-		}
+	baseURL := cp.baseUrl
+	if baseURL == "" {
+		baseURL = defaultBaseUrl
 	}
 
 	// set client based on identity
+	var err error
 	if cp.workspaceIdentity != nil {
-		cp.client, err = workspace.New(baseClient, *cp.workspaceIdentity)
+		cp.client, err = workspace.New(baseURL, cp.requestDoer, *cp.workspaceIdentity)
 	} else if cp.namespaceIdentity != nil {
-		cp.client, err = namespace.New(baseClient, *cp.namespaceIdentity)
+		cp.client, err = namespace.New(baseURL, cp.requestDoer, *cp.namespaceIdentity)
 	} else {
 		return fmt.Errorf("workspace or namespace identity must be set")
 	}

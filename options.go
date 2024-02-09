@@ -2,7 +2,6 @@ package cpsdk
 
 import (
 	"fmt"
-	"net/url"
 
 	"github.com/rudderlabs/rudder-cp-sdk/model/identity"
 	"github.com/rudderlabs/rudder-go-kit/logger"
@@ -36,19 +35,7 @@ func WithNamespaceIdentity(namespace, secret string) Option {
 
 func WithBaseUrl(baseUrl string) Option {
 	return func(cp *ControlPlane) error {
-		parsedURL, err := url.Parse(baseUrl)
-		if err != nil {
-			return fmt.Errorf("invalid base url: %w", err)
-		}
-
-		cp.baseUrl = parsedURL
-		return nil
-	}
-}
-
-func WithAdminCredentials(credentials *identity.AdminCredentials) Option {
-	return func(cp *ControlPlane) error {
-		cp.adminCredentials = credentials
+		cp.baseUrl = baseUrl
 		return nil
 	}
 }
@@ -56,6 +43,13 @@ func WithAdminCredentials(credentials *identity.AdminCredentials) Option {
 func WithLogger(log logger.Logger) Option {
 	return func(cp *ControlPlane) error {
 		cp.log = log
+		return nil
+	}
+}
+
+func WithRequestDoer(requestDoer RequestDoer) Option {
+	return func(cp *ControlPlane) error {
+		cp.requestDoer = requestDoer
 		return nil
 	}
 }
