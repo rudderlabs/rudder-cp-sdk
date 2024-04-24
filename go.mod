@@ -7,7 +7,7 @@ toolchain go1.21.3
 require (
 	github.com/golang/mock v1.6.0
 	github.com/json-iterator/go v1.1.12
-	github.com/rudderlabs/rudder-go-kit v0.25.0
+	github.com/rudderlabs/rudder-go-kit v0.29.0
 	github.com/stretchr/testify v1.9.0
 )
 
