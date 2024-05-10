@@ -73,6 +73,6 @@ func (g *gzipReadCloser) Read(p []byte) (n int, err error) {
 }
 
 func (g *gzipReadCloser) Close() error {
-	_ = g.resBody.Close()
+	defer func() { _ = g.resBody.Close() }()
 	return g.gzipReader.Close()
 }
