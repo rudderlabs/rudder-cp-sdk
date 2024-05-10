@@ -43,7 +43,7 @@ type ControlPlane struct {
 
 type Client interface {
 	GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error)
-	GetRawWorkspaceConfigs(ctx context.Context) ([]byte, error)
+	GetCustomWorkspaceConfigs(ctx context.Context, object any) error
 	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) (*modelv2.WorkspaceConfigs, error)
 }
 
@@ -147,17 +147,17 @@ func (cp *ControlPlane) Close() {
 // GetWorkspaceConfigs returns the latest workspace configs.
 // If polling is enabled, this will return the cached configs, if they have been retrieved at least once.
 // Otherwise, it will make a request to the control plane to get the latest configs.
-func (cp *ControlPlane) GetWorkspaceConfigs() (*modelv2.WorkspaceConfigs, error) {
+func (cp *ControlPlane) GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error) {
 	if cp.poller != nil {
 		return cp.configsCache.Get(), nil
 	} else {
-		return cp.Client.GetWorkspaceConfigs(context.Background())
+		return cp.Client.GetWorkspaceConfigs(ctx)
 	}
 }
 
-// GetRawWorkspaceConfigs returns the raw workspace configs. It does not support for incremental updates.
-func (cp *ControlPlane) GetRawWorkspaceConfigs() ([]byte, error) {
-	return cp.Client.GetRawWorkspaceConfigs(context.Background())
+// GetCustomWorkspaceConfigs streams the JSON payload directly in the target object. It does not support for incremental updates.
+func (cp *ControlPlane) GetCustomWorkspaceConfigs(ctx context.Context, object any) error {
+	return cp.Client.GetCustomWorkspaceConfigs(ctx, object)
 }
 
 type Subscriber interface {
