@@ -1,16 +1,19 @@
 package parser
 
 import (
+	"io"
+
 	jsoniter "github.com/json-iterator/go"
+
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var json = jsoniter.ConfigFastest
 
-func Parse(data []byte) (*modelv2.WorkspaceConfigs, error) {
+func Parse(reader io.Reader) (*modelv2.WorkspaceConfigs, error) {
 	res := &modelv2.WorkspaceConfigs{}
 
-	if err := json.Unmarshal(data, res); err != nil {
+	if err := json.NewDecoder(reader).Decode(res); err != nil {
 		return nil, err
 	}
 

@@ -1,16 +1,18 @@
 package parser_test
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2/parser"
-	"github.com/stretchr/testify/require"
 )
 
 func TestParse(t *testing.T) {
-	data, err := os.ReadFile("testdata/workspace_configs.v2.json")
+	data, err := os.Open("testdata/workspace_configs.v2.json")
 	require.NoError(t, err)
 
 	wcs, err := parser.Parse(data)
@@ -39,7 +41,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestParseError(t *testing.T) {
-	wcs, err := parser.Parse([]byte(`{ malformed json }`))
+	wcs, err := parser.Parse(bytes.NewReader([]byte(`{ malformed json }`)))
 	require.Nil(t, wcs)
 	require.Error(t, err)
 }
