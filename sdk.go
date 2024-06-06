@@ -19,10 +19,14 @@ import (
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
-const defaultBaseUrl = "https://api.rudderstack.com"
+const (
+	defaultBaseUrl   = "https://api.rudderstack.com"
+	defaultBaseUrlV2 = "https://dp.api.rudderstack.com"
+)
 
 type ControlPlane struct {
 	baseUrl           *url.URL
+	baseUrlV2         *url.URL
 	workspaceIdentity *identity.Workspace
 	namespaceIdentity *identity.Namespace
 	adminCredentials  *identity.AdminCredentials
@@ -53,8 +57,10 @@ type RequestDoer interface {
 
 func New(options ...Option) (*ControlPlane, error) {
 	url, _ := url.Parse(defaultBaseUrl)
+	urlV2, _ := url.Parse(defaultBaseUrlV2)
 	cp := &ControlPlane{
 		baseUrl:         url,
+		baseUrlV2:       urlV2,
 		log:             logger.NOP,
 		pollingInterval: 1 * time.Second,
 		configsCache:    &cache.WorkspaceConfigCache{},
@@ -83,6 +89,7 @@ func (cp *ControlPlane) setupClients() error {
 	}
 
 	baseClient := &base.Client{HTTPClient: cp.httpClient, BaseURL: cp.baseUrl}
+	baseClientV2 := &base.Client{HTTPClient: cp.httpClient, BaseURL: cp.baseUrlV2}
 
 	// set admin client
 	if cp.adminCredentials != nil {
@@ -101,7 +108,7 @@ func (cp *ControlPlane) setupClients() error {
 		}
 	} else if cp.namespaceIdentity != nil {
 		cp.Client = &namespace.Client{
-			Client:   baseClient,
+			Client:   baseClientV2,
 			Identity: cp.namespaceIdentity,
 		}
 	} else {
