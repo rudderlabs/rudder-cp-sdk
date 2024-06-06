@@ -36,7 +36,7 @@ func (c *Client) Get(ctx context.Context, path string) (*http.Request, error) {
 }
 
 func (c *Client) getWorkspaceConfigsReader(ctx context.Context) (io.ReadCloser, error) {
-	req, err := c.Get(ctx, "/data-plane/v2/namespaces/"+c.Identity.Namespace+"/config")
+	req, err := c.Get(ctx, "/configuration/v2/namespaces/"+c.Identity.Namespace)
 	if err != nil {
 		return nil, err
 	}
