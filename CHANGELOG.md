@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.0.0...v1.1.0) (2024-06-07)
+
+
+### Features
+
+* update endpoint to new ha service ([#44](https://github.com/rudderlabs/rudder-cp-sdk/issues/44)) ([06ecef1](https://github.com/rudderlabs/rudder-cp-sdk/commit/06ecef106a1b05ccbd21c51b5b4b7babc046bbef))
+
 ## 1.0.0 (2024-05-13)
 
 
