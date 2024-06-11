@@ -5,8 +5,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-go-kit/logger"
+
+	"github.com/rudderlabs/rudder-cp-sdk/identity"
 )
 
 type Option func(*ControlPlane) error
@@ -43,6 +44,7 @@ func WithBaseUrl(baseUrl string) Option {
 		}
 
 		cp.baseUrl = url
+		cp.baseUrlV2 = url
 		return nil
 	}
 }
