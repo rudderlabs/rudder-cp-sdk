@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.1.0...v1.1.1) (2024-06-12)
+
+
+### Bug Fixes
+
+* base url options ([#46](https://github.com/rudderlabs/rudder-cp-sdk/issues/46)) ([290c147](https://github.com/rudderlabs/rudder-cp-sdk/commit/290c14795fa8d435d2e8f088b633f23c86df4343))
+
 ## [1.1.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.0.0...v1.1.0) (2024-06-07)
 
 
