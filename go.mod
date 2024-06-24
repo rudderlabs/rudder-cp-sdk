@@ -1,6 +1,7 @@
 module github.com/rudderlabs/rudder-cp-sdk
 
-go 1.21
+go 1.22.4
+
 require (
 	github.com/golang/mock v1.6.0
 	github.com/json-iterator/go v1.1.12
