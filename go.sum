@@ -37,8 +37,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
-github.com/rudderlabs/rudder-go-kit v0.37.1 h1:L0URbqLuRU8X8Al7kiEb33lVflitndUzfxgOkkvhJdo=
-github.com/rudderlabs/rudder-go-kit v0.37.1/go.mod h1:0PL85v6y/3faJvp6EifQ31dh1vWJ79X2URiJdbLjjI0=
+github.com/rudderlabs/rudder-go-kit v0.38.0 h1:WVm1nhnt4j2SGEf+PRl/UDFjOtlngAOUoZbiJ7XapyM=
+github.com/rudderlabs/rudder-go-kit v0.38.0/go.mod h1:dRi+dtkpLoRCq319RFU467aKf9VkDpskCA1nskXEllA=
 github.com/sagikazarmark/locafero v0.6.0 h1:ON7AQg37yzcRPU69mt7gwhFEBwxI6P9T4Qu3N51bwOk=
 github.com/sagikazarmark/locafero v0.6.0/go.mod h1:77OmuIc6VTraTXKXIs/uvUxKGUXjE1GbemJYHqdNjX0=
 github.com/sagikazarmark/slog-shim v0.1.0 h1:diDBnUNK9N/354PgrxMywXnAwEr1QZcOr6gto+ugjYE=
