@@ -5,7 +5,7 @@ go 1.22.5
 require (
 	github.com/golang/mock v1.6.0
 	github.com/json-iterator/go v1.1.12
-	github.com/rudderlabs/rudder-go-kit v0.38.0
+	github.com/rudderlabs/rudder-go-kit v0.38.2
 	github.com/stretchr/testify v1.9.0
 )
 
