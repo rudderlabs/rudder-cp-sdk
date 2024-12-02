@@ -46,9 +46,7 @@ type ControlPlane struct {
 }
 
 type Client interface {
-	GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error)
-	GetCustomWorkspaceConfigs(ctx context.Context, object any) error
-	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAfter time.Time) (*modelv2.WorkspaceConfigs, error)
+	GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error
 }
 
 type RequestDoer interface {
@@ -56,11 +54,11 @@ type RequestDoer interface {
 }
 
 func New(options ...Option) (*ControlPlane, error) {
-	url, _ := url.Parse(defaultBaseUrl)
-	urlV2, _ := url.Parse(defaultBaseUrlV2)
+	baseUrl, _ := url.Parse(defaultBaseUrl)
+	baseUrlV2, _ := url.Parse(defaultBaseUrlV2)
 	cp := &ControlPlane{
-		baseUrl:         url,
-		baseUrlV2:       urlV2,
+		baseUrl:         baseUrl,
+		baseUrlV2:       baseUrlV2,
 		log:             logger.NOP,
 		pollingInterval: 1 * time.Second,
 		configsCache:    &cache.WorkspaceConfigCache{},
@@ -154,17 +152,13 @@ func (cp *ControlPlane) Close() {
 // GetWorkspaceConfigs returns the latest workspace configs.
 // If polling is enabled, this will return the cached configs, if they have been retrieved at least once.
 // Otherwise, it will make a request to the control plane to get the latest configs.
-func (cp *ControlPlane) GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error) {
+func (cp *ControlPlane) GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error {
 	if cp.poller != nil {
-		return cp.configsCache.Get(), nil
+		object = cp.configsCache.Get()
+		return nil
 	} else {
-		return cp.Client.GetWorkspaceConfigs(ctx)
+		return cp.Client.GetWorkspaceConfigs(ctx, object, updatedAfter)
 	}
-}
-
-// GetCustomWorkspaceConfigs streams the JSON payload directly in the target object. It does not support for incremental updates.
-func (cp *ControlPlane) GetCustomWorkspaceConfigs(ctx context.Context, object any) error {
-	return cp.Client.GetCustomWorkspaceConfigs(ctx, object)
 }
 
 type Subscriber interface {

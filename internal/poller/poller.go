@@ -1,4 +1,3 @@
-//go:generate mockgen -source=poller.go -destination=mocks/poller.go -package=mocks
 package poller
 
 import (
@@ -22,8 +21,7 @@ type Poller struct {
 type WorkspaceConfigHandler func(*modelv2.WorkspaceConfigs) error
 
 type Client interface {
-	GetWorkspaceConfigs(ctx context.Context) (*modelv2.WorkspaceConfigs, error)
-	GetUpdatedWorkspaceConfigs(ctx context.Context, updatedAt time.Time) (*modelv2.WorkspaceConfigs, error)
+	GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error
 }
 
 func New(handler WorkspaceConfigHandler, opts ...Option) (*Poller, error) {
@@ -66,32 +64,21 @@ func (p *Poller) Start(ctx context.Context) {
 }
 
 func (p *Poller) poll(ctx context.Context) error {
-	var response *modelv2.WorkspaceConfigs
-	if p.updatedAt.IsZero() {
-		p.log.Debug("polling for workspace configs")
-		wcs, err := p.client.GetWorkspaceConfigs(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to get workspace configs: %w", err)
-		}
+	p.log.Debugn("polling for workspace configs", logger.NewTimeField("updatedAt", p.updatedAt))
 
-		response = wcs
-	} else {
-		p.log.Debugf("polling for workspace configs updated after %v", p.updatedAt)
-		wcs, err := p.client.GetUpdatedWorkspaceConfigs(ctx, p.updatedAt)
-		if err != nil {
-			return fmt.Errorf("failed to get updated workspace configs: %w", err)
-		}
-
-		response = wcs
+	var wcs modelv2.WorkspaceConfigs
+	err := p.client.GetWorkspaceConfigs(ctx, &wcs, p.updatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to get updated workspace configs: %w", err)
 	}
 
-	if err := p.handler(response); err != nil {
+	if err := p.handler(&wcs); err != nil {
 		return fmt.Errorf("failed to handle workspace configs: %w", err)
 	}
 
 	// only update updatedAt if we managed to handle the response
 	// so that we don't miss any updates in case of an error
-	p.updatedAt = response.UpdatedAt()
+	p.updatedAt = wcs.UpdatedAt()
 
 	return nil
 }

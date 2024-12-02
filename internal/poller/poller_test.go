@@ -7,11 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
-	"github.com/rudderlabs/rudder-cp-sdk/internal/poller"
-	"github.com/rudderlabs/rudder-cp-sdk/internal/poller/mocks"
-	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/stretchr/testify/require"
+
+	"github.com/rudderlabs/rudder-cp-sdk/internal/poller"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 )
 
 func TestPollerNew(t *testing.T) {
@@ -29,16 +28,24 @@ func TestPollerNew(t *testing.T) {
 }
 
 func TestPoller(t *testing.T) {
-	ctrl := gomock.NewController(t)
-
 	t.Run("should poll using client and workspace configs handler", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		client := mocks.NewMockClient(ctrl)
-		client.EXPECT().GetWorkspaceConfigs(gomock.Any()).Return(mockedResponses[0], nil).Times(1)
-		client.EXPECT().GetUpdatedWorkspaceConfigs(gomock.Any(), mockedResponses[0].UpdatedAt()).Return(mockedResponses[1], nil).Times(1)
-		client.EXPECT().GetUpdatedWorkspaceConfigs(gomock.Any(), mockedResponses[1].UpdatedAt()).Return(mockedResponses[2], nil).Times(1)
+		client := &mockClient{calls: []clientCall{
+			{
+				dataToBeReturned:  mockedResponses[0],
+				expectedUpdatedAt: time.Time{},
+			},
+			{
+				dataToBeReturned:  mockedResponses[1],
+				expectedUpdatedAt: mockedResponses[0].UpdatedAt(),
+			},
+			{
+				dataToBeReturned:  mockedResponses[2],
+				expectedUpdatedAt: mockedResponses[1].UpdatedAt(),
+			},
+		}}
 
 		var wg sync.WaitGroup
 		wg.Add(len(mockedResponses))
@@ -61,12 +68,23 @@ func TestPoller(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		client := mocks.NewMockClient(ctrl)
-		client.EXPECT().GetWorkspaceConfigs(gomock.Any()).Return(nil, errors.New("first call failed")).Times(1)
-		client.EXPECT().GetWorkspaceConfigs(gomock.Any()).Return(mockedResponses[0], nil).Times(1)
-		client.EXPECT().GetUpdatedWorkspaceConfigs(gomock.Any(), mockedResponses[0].UpdatedAt()).Return(mockedResponses[1], nil).Times(1)
-		client.EXPECT().GetUpdatedWorkspaceConfigs(gomock.Any(), mockedResponses[1].UpdatedAt()).Return(nil, errors.New("fourth call failed")).Times(1)
-		client.EXPECT().GetUpdatedWorkspaceConfigs(gomock.Any(), mockedResponses[1].UpdatedAt()).Return(mockedResponses[2], nil).Times(1)
+		client := &mockClient{calls: []clientCall{
+			{
+				errToBeReturned: errors.New("first call failed"),
+			},
+			{
+				dataToBeReturned:  mockedResponses[0],
+				expectedUpdatedAt: time.Time{},
+			},
+			{
+				dataToBeReturned:  mockedResponses[1],
+				expectedUpdatedAt: mockedResponses[0].UpdatedAt(),
+			},
+			{
+				dataToBeReturned:  mockedResponses[2],
+				expectedUpdatedAt: mockedResponses[1].UpdatedAt(),
+			},
+		}}
 
 		var wg sync.WaitGroup
 		wg.Add(len(mockedResponses))
@@ -89,12 +107,24 @@ func TestPoller(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		client := mocks.NewMockClient(ctrl)
-		client.EXPECT().GetWorkspaceConfigs(gomock.Any()).Return(mockedResponses[0], nil).Times(1)
-		// this will be called twice, once for the first failed handler call and once for the second
-		client.EXPECT().GetWorkspaceConfigs(gomock.Any()).Return(mockedResponses[0], nil).Times(1)
-		client.EXPECT().GetUpdatedWorkspaceConfigs(gomock.Any(), mockedResponses[0].UpdatedAt()).Return(mockedResponses[1], nil).Times(1)
-		client.EXPECT().GetUpdatedWorkspaceConfigs(gomock.Any(), mockedResponses[1].UpdatedAt()).Return(mockedResponses[2], nil).Times(1)
+		client := &mockClient{calls: []clientCall{
+			{ // this will be called twice, once for the first failed handler call and once for the second
+				dataToBeReturned:  mockedResponses[0],
+				expectedUpdatedAt: time.Time{},
+			},
+			{
+				dataToBeReturned:  mockedResponses[0],
+				expectedUpdatedAt: time.Time{},
+			},
+			{
+				dataToBeReturned:  mockedResponses[1],
+				expectedUpdatedAt: mockedResponses[0].UpdatedAt(),
+			},
+			{
+				dataToBeReturned:  mockedResponses[2],
+				expectedUpdatedAt: mockedResponses[1].UpdatedAt(),
+			},
+		}}
 
 		var wg sync.WaitGroup
 		wg.Add(len(mockedResponses))
@@ -122,10 +152,42 @@ func TestPoller(t *testing.T) {
 func startTestPoller(t *testing.T, ctx context.Context, client poller.Client, handler poller.WorkspaceConfigHandler) {
 	p, err := poller.New(handler,
 		poller.WithClient(client),
-		poller.WithPollingInterval(1*time.Millisecond),
+		poller.WithPollingInterval(time.Nanosecond),
 	)
 	require.NoError(t, err)
 	p.Start(ctx)
+}
+
+type mockClient struct {
+	calls    []clientCall
+	nextCall int
+}
+
+type clientCall struct {
+	dataToBeReturned  *modelv2.WorkspaceConfigs
+	errToBeReturned   error
+	expectedUpdatedAt time.Time
+}
+
+func (m *mockClient) GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error {
+	if m.nextCall >= len(m.calls) {
+		return errors.New("no more calls")
+	}
+
+	call := m.calls[m.nextCall]
+	m.nextCall++
+
+	if call.expectedUpdatedAt.Nanosecond() != updatedAfter.Nanosecond() {
+		return errors.New("unexpected updatedAt")
+	}
+
+	if call.errToBeReturned != nil {
+		return call.errToBeReturned
+	}
+
+	*object.(*modelv2.WorkspaceConfigs) = *call.dataToBeReturned
+
+	return ctx.Err()
 }
 
 var mockedResponses = []*modelv2.WorkspaceConfigs{
