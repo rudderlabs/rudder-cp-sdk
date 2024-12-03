@@ -38,13 +38,14 @@ func WithNamespaceIdentity(namespace, secret string) Option {
 
 func WithBaseUrl(baseUrl string) Option {
 	return func(cp *ControlPlane) error {
-		url, err := url.Parse(baseUrl)
+		u, err := url.Parse(baseUrl)
 		if err != nil {
 			return fmt.Errorf("invalid base url: %w", err)
 		}
 
-		cp.baseUrl = url
-		cp.baseUrlV2 = url
+		cp.baseUrl = u
+		cp.baseUrlV2 = u
+
 		return nil
 	}
 }
@@ -63,12 +64,45 @@ func WithLogger(log logger.Logger) Option {
 	}
 }
 
-// WithPollingInterval sets the interval at which the SDK polls for new configs.
-// If not set, the SDK will poll every 1 second.
-// If set to 0, the SDK will not poll for new configs.
-func WithPollingInterval(interval time.Duration) Option {
+// PollerOption is used to configure the poller
+type PollerOption func(*pollerConfig)
+
+// WithPoller allows to configure the poller
+// When invoked without arguments, it will use the default values set inside this function
+func WithPoller(options ...PollerOption) Option {
 	return func(cp *ControlPlane) error {
-		cp.pollingInterval = interval
+		cp.pollerConfig = &pollerConfig{
+			pollingInterval:        1 * time.Second,
+			backoffInitialInterval: 1 * time.Second,
+			backoffMaxInterval:     1 * time.Minute,
+			backoffMultiplier:      1.5,
+		}
+		for _, option := range options {
+			option(cp.pollerConfig)
+		}
 		return nil
 	}
+}
+
+type pollerConfig struct {
+	pollingInterval        time.Duration
+	backoffInitialInterval time.Duration
+	backoffMaxInterval     time.Duration
+	backoffMultiplier      float64
+}
+
+func WithPollingInterval(interval time.Duration) PollerOption {
+	return func(pc *pollerConfig) { pc.pollingInterval = interval }
+}
+
+func WithPollingBackoffInitialInterval(interval time.Duration) PollerOption {
+	return func(pc *pollerConfig) { pc.backoffInitialInterval = interval }
+}
+
+func WithPollingBackoffMaxInterval(interval time.Duration) PollerOption {
+	return func(pc *pollerConfig) { pc.backoffMaxInterval = interval }
+}
+
+func WithPollingBackoffMultiplier(multiplier float64) PollerOption {
+	return func(pc *pollerConfig) { pc.backoffMultiplier = multiplier }
 }

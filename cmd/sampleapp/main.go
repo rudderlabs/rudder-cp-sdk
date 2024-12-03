@@ -11,18 +11,19 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-go-kit/config"
 	"github.com/rudderlabs/rudder-go-kit/logger"
+	obskit "github.com/rudderlabs/rudder-observability-kit/go/labels"
 )
 
 var log logger.Logger
 
 func main() {
-	// setup a logger using the rudder-go-kit package
+	// Setting up a logger using the rudder-go-kit package
 	c := config.New()
 	loggerFactory := logger.NewFactory(c)
 	log = loggerFactory.NewLogger()
 
 	if err := run(); err != nil {
-		log.Fatalf("main error: %v", err)
+		log.Fataln("main error", obskit.Error(err))
 	}
 }
 
@@ -67,7 +68,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("error setting up control plane sdk: %v", err)
 	}
-	defer sdk.Close()
+	defer func() { _ = sdk.Close(context.Background()) }()
 
 	var wcs modelv2.WorkspaceConfigs
 	err = sdk.Client.GetWorkspaceConfigs(context.Background(), &wcs, time.Time{})

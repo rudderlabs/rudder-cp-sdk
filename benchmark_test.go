@@ -24,11 +24,10 @@ func BenchmarkGetWorkspaceConfigs(b *testing.B) {
 	cpSDK, err := New(
 		WithBaseUrl(baseURL),
 		WithLogger(logger.NOP),
-		WithPollingInterval(0), // Setting the poller interval to 0 to disable the poller
 		WithNamespaceIdentity(namespace, identity),
 	)
 	require.NoError(b, err)
-	defer cpSDK.Close()
+	defer func() { _ = cpSDK.Close(context.Background()) }()
 
 	var workspaceConfigs WorkspaceConfigs
 	err = cpSDK.GetWorkspaceConfigs(context.Background(), &workspaceConfigs, time.Time{})

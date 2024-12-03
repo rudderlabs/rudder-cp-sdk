@@ -8,10 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
-
 	"github.com/stretchr/testify/require"
 
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 	"github.com/rudderlabs/rudder-go-kit/testhelper/httptest"
 )
@@ -96,11 +95,10 @@ func TestIncrementalUpdates(t *testing.T) {
 	cpSDK, err := New(
 		WithBaseUrl(ts.URL),
 		WithLogger(logger.NOP),
-		WithPollingInterval(0), // Setting the poller interval to 0 to disable the poller
 		WithNamespaceIdentity(namespace, secret),
 	)
 	require.NoError(t, err)
-	defer cpSDK.Close()
+	defer func() { _ = cpSDK.Close(context.Background()) }()
 
 	// send the request the first time
 	var wcs modelv2.WorkspaceConfigs

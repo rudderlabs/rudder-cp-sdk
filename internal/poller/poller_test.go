@@ -150,12 +150,23 @@ func TestPoller(t *testing.T) {
 }
 
 func startTestPoller(t *testing.T, ctx context.Context, client poller.Client, handler poller.WorkspaceConfigHandler) {
+	t.Helper()
+
 	p, err := poller.New(handler,
 		poller.WithClient(client),
 		poller.WithPollingInterval(time.Nanosecond),
+		poller.WithPollingBackoffInitialInterval(time.Nanosecond),
+		poller.WithPollingBackoffMaxInterval(time.Nanosecond),
+		poller.WithPollingBackoffMultiplier(1),
 	)
 	require.NoError(t, err)
-	p.Start(ctx)
+
+	done := make(chan struct{})
+	t.Cleanup(func() { <-done })
+	go func() {
+		p.Run(ctx)
+		close(done)
+	}()
 }
 
 type mockClient struct {

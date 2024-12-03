@@ -40,9 +40,10 @@ type ControlPlane struct {
 
 	configsCache *cache.WorkspaceConfigCache
 
-	pollingInterval time.Duration
-	poller          *poller.Poller
-	pollerStop      context.CancelFunc
+	poller       *poller.Poller
+	pollerConfig *pollerConfig
+	pollerStop   context.CancelFunc
+	pollerDone   chan struct{}
 }
 
 type Client interface {
@@ -57,11 +58,10 @@ func New(options ...Option) (*ControlPlane, error) {
 	baseUrl, _ := url.Parse(defaultBaseUrl)
 	baseUrlV2, _ := url.Parse(defaultBaseUrlV2)
 	cp := &ControlPlane{
-		baseUrl:         baseUrl,
-		baseUrlV2:       baseUrlV2,
-		log:             logger.NOP,
-		pollingInterval: 1 * time.Second,
-		configsCache:    &cache.WorkspaceConfigCache{},
+		baseUrl:      baseUrl,
+		baseUrlV2:    baseUrlV2,
+		log:          logger.NOP,
+		configsCache: &cache.WorkspaceConfigCache{},
 	}
 
 	for _, option := range options {
@@ -117,7 +117,7 @@ func (cp *ControlPlane) setupClients() error {
 }
 
 func (cp *ControlPlane) setupPoller() error {
-	if cp.pollingInterval == 0 {
+	if cp.pollerConfig == nil {
 		return nil
 	}
 
@@ -128,8 +128,12 @@ func (cp *ControlPlane) setupPoller() error {
 
 	p, err := poller.New(handle,
 		poller.WithClient(cp.Client),
-		poller.WithPollingInterval(cp.pollingInterval),
-		poller.WithLogger(cp.log))
+		poller.WithPollingInterval(cp.pollerConfig.pollingInterval),
+		poller.WithPollingBackoffInitialInterval(cp.pollerConfig.backoffInitialInterval),
+		poller.WithPollingBackoffMaxInterval(cp.pollerConfig.backoffMaxInterval),
+		poller.WithPollingBackoffMultiplier(cp.pollerConfig.backoffMultiplier),
+		poller.WithLogger(cp.log),
+	)
 	if err != nil {
 		return err
 	}
@@ -137,16 +141,26 @@ func (cp *ControlPlane) setupPoller() error {
 	cp.poller = p
 	ctx, cancel := context.WithCancel(context.Background())
 	cp.pollerStop = cancel
-	cp.poller.Start(ctx)
+	cp.pollerDone = make(chan struct{})
+	go func() {
+		cp.poller.Run(ctx)
+		close(cp.pollerDone)
+	}()
 
 	return nil
 }
 
 // Close stops any background processes such as polling for workspace configs.
-func (cp *ControlPlane) Close() {
+func (cp *ControlPlane) Close(ctx context.Context) error {
 	if cp.poller != nil {
 		cp.pollerStop()
 	}
+	select {
+	case <-cp.pollerDone:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	return nil
 }
 
 // GetWorkspaceConfigs returns the latest workspace configs.

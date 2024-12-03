@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
+
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-go-kit/logger"
+	obskit "github.com/rudderlabs/rudder-observability-kit/go/labels"
 )
 
 // Poller periodically polls for new workspace configs and runs a handler on them.
@@ -15,7 +18,12 @@ type Poller struct {
 	interval  time.Duration
 	handler   WorkspaceConfigHandler
 	updatedAt time.Time
-	log       logger.Logger
+	backoff   struct {
+		initialInterval time.Duration
+		maxInterval     time.Duration
+		multiplier      float64
+	}
+	log logger.Logger
 }
 
 type WorkspaceConfigHandler func(*modelv2.WorkspaceConfigs) error
@@ -30,6 +38,9 @@ func New(handler WorkspaceConfigHandler, opts ...Option) (*Poller, error) {
 		handler:  handler,
 		log:      logger.NOP,
 	}
+	p.backoff.initialInterval = 1 * time.Second
+	p.backoff.maxInterval = 1 * time.Minute
+	p.backoff.multiplier = 1.5
 
 	for _, opt := range opts {
 		opt(p)
@@ -46,23 +57,53 @@ func New(handler WorkspaceConfigHandler, opts ...Option) (*Poller, error) {
 	return p, nil
 }
 
-// Start starts the poller goroutine. It will poll for new workspace configs every interval.
+// Run starts polling for new workspace configs every interval.
 // It will stop polling when the context is cancelled.
-func (p *Poller) Start(ctx context.Context) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(p.interval):
-				if err := p.poll(ctx); err != nil {
-					p.log.Errorf("failed to poll for workspace configs: %v", err)
+func (p *Poller) Run(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(p.interval):
+			err := p.poll(ctx)
+			if err == nil {
+				continue
+			}
+
+			p.log.Errorn("failed to poll workspace configs", obskit.Error(err))
+
+			nextBackOff := p.nextBackOff()
+			for delay := nextBackOff(); delay != backoff.Stop; delay = nextBackOff() {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(delay):
+					err = p.poll(ctx)
+					if err != nil {
+						p.log.Warnn("failed to poll workspace configs after delay",
+							logger.NewDurationField("delay", delay),
+							obskit.Error(err),
+						)
+					} else {
+						break
+					}
 				}
 			}
+			if err != nil {
+				p.log.Errorn("failed to poll workspace configs after backoff",
+					logger.NewDurationField("backoff", p.backoff.maxInterval),
+					obskit.Error(err),
+				)
+			}
 		}
-	}()
+	}
 }
 
+/*
+TODO we should detect inconsistencies, like if a workspace that we are not aware of is returned with null
+as if it wasn't updated since the last call but we never received it. in that case we should log an error
+and trigger a full update.
+*/
 func (p *Poller) poll(ctx context.Context) error {
 	p.log.Debugn("polling for workspace configs", logger.NewTimeField("updatedAt", p.updatedAt))
 
@@ -78,7 +119,19 @@ func (p *Poller) poll(ctx context.Context) error {
 
 	// only update updatedAt if we managed to handle the response
 	// so that we don't miss any updates in case of an error
-	p.updatedAt = wcs.UpdatedAt()
+	if !wcs.UpdatedAt().IsZero() {
+		// There is a case where all workspaces have not been updated since the last request.
+		// In that case updatedAt will be zero.
+		p.updatedAt = wcs.UpdatedAt()
+	}
 
 	return nil
+}
+
+func (p *Poller) nextBackOff() func() time.Duration {
+	return backoff.NewExponentialBackOff(
+		backoff.WithInitialInterval(p.backoff.initialInterval),
+		backoff.WithMaxInterval(p.backoff.maxInterval),
+		backoff.WithMultiplier(p.backoff.multiplier),
+	).NextBackOff
 }
