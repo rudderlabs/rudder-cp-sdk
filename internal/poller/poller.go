@@ -73,6 +73,7 @@ func (p *Poller) Run(ctx context.Context) {
 			p.log.Errorn("failed to poll workspace configs", obskit.Error(err))
 
 			nextBackOff := p.nextBackOff()
+		retryLoop:
 			for delay := nextBackOff(); delay != backoff.Stop; delay = nextBackOff() {
 				select {
 				case <-ctx.Done():
@@ -85,7 +86,7 @@ func (p *Poller) Run(ctx context.Context) {
 							obskit.Error(err),
 						)
 					} else {
-						break
+						break retryLoop
 					}
 				}
 			}

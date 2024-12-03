@@ -152,15 +152,18 @@ func (cp *ControlPlane) setupPoller() error {
 
 // Close stops any background processes such as polling for workspace configs.
 func (cp *ControlPlane) Close(ctx context.Context) error {
-	if cp.poller != nil {
-		cp.pollerStop()
+	if cp.pollerDone == nil {
+		return nil
 	}
+
+	cp.pollerStop()
+
 	select {
 	case <-cp.pollerDone:
+		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	return nil
 }
 
 // GetWorkspaceConfigs returns the latest workspace configs.
