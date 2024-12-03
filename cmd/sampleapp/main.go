@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	cpsdk "github.com/rudderlabs/rudder-cp-sdk"
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-go-kit/config"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
@@ -67,7 +69,14 @@ func run() error {
 	}
 	defer sdk.Close()
 
-	_, err = sdk.Client.GetWorkspaceConfigs(context.Background())
+	var wcs modelv2.WorkspaceConfigs
+	err = sdk.Client.GetWorkspaceConfigs(context.Background(), &wcs, time.Time{})
+	if err != nil {
+		return fmt.Errorf("error getting workspace configs: %v", err)
+	}
+
+	// Some time passes and we want to get the latest changes only, without re-fetching the entire config
+	err = sdk.Client.GetWorkspaceConfigs(context.Background(), &wcs, wcs.UpdatedAt())
 	if err != nil {
 		return fmt.Errorf("error getting workspace configs: %v", err)
 	}

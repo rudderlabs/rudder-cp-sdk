@@ -7,9 +7,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/rudderlabs/rudder-go-kit/httputil"
 )
+
+const updatedAfterTimeFormat = "2006-01-02T15:04:05.000Z"
 
 type Client struct {
 	HTTPClient HTTPClient
@@ -20,12 +23,19 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func (c *Client) Url(path string) string {
-	return c.BaseURL.JoinPath(path).String()
+func (c *Client) Url(path string, updatedAfter time.Time) string {
+	v := c.BaseURL.JoinPath(path)
+
+	if !updatedAfter.IsZero() {
+		queryValues := v.Query()
+		queryValues.Add("updatedAfter", updatedAfter.Format(updatedAfterTimeFormat))
+	}
+
+	return v.String()
 }
 
-func (c *Client) Get(ctx context.Context, path string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", c.Url(path), nil)
+func (c *Client) Get(ctx context.Context, path string, updatedAfter time.Time) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", c.Url(path, updatedAfter), nil)
 	if err != nil {
 		return nil, err
 	}

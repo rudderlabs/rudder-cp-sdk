@@ -154,7 +154,7 @@ func (cp *ControlPlane) Close() {
 // Otherwise, it will make a request to the control plane to get the latest configs.
 func (cp *ControlPlane) GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error {
 	if cp.poller != nil {
-		object = cp.configsCache.Get()
+		object = cp.configsCache.Get() //nolint:ineffassign,wastedassign
 		return nil
 	} else {
 		return cp.Client.GetWorkspaceConfigs(ctx, object, updatedAfter)

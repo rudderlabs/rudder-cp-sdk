@@ -13,7 +13,7 @@ import (
 
 func BenchmarkGetWorkspaceConfigs(b *testing.B) {
 	conf := config.New()
-	baseURL := conf.GetString("BASE_URL", "https://api.rudderstack.com")
+	baseURL := conf.GetString("BASE_URL", "https://dp.api.rudderstack.com/")
 	namespace := conf.GetString("NAMESPACE", "free-us-1")
 	identity := conf.GetString("IDENTITY", "")
 	if identity == "" {
@@ -33,6 +33,8 @@ func BenchmarkGetWorkspaceConfigs(b *testing.B) {
 	var workspaceConfigs WorkspaceConfigs
 	err = cpSDK.GetWorkspaceConfigs(context.Background(), &workspaceConfigs, time.Time{})
 	require.NoError(b, err)
+	require.NotNil(b, workspaceConfigs)
+	require.Greater(b, len(workspaceConfigs.Workspaces), 0)
 }
 
 type WorkspaceConfigs struct {

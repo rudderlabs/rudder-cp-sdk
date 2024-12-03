@@ -21,8 +21,8 @@ type Client struct {
 	Identity *identity.Namespace
 }
 
-func (c *Client) Get(ctx context.Context, path string) (*http.Request, error) {
-	req, err := c.Client.Get(ctx, path)
+func (c *Client) Get(ctx context.Context, path string, updatedAfter time.Time) (*http.Request, error) {
+	req, err := c.Client.Get(ctx, path, updatedAfter)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c *Client) Get(ctx context.Context, path string) (*http.Request, error) {
 }
 
 func (c *Client) getWorkspaceConfigsReader(ctx context.Context, updatedAfter time.Time) (io.ReadCloser, error) {
-	req, err := c.Get(ctx, "/configuration/v2/namespaces/"+c.Identity.Namespace) // TODO add updatedAt
+	req, err := c.Get(ctx, "/configuration/v2/namespaces/"+c.Identity.Namespace, updatedAfter)
 	if err != nil {
 		return nil, err
 	}
