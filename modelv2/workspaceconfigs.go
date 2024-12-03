@@ -30,15 +30,15 @@ type WorkspaceConfig struct {
 }
 
 // UpdatedAt returns the maximum UpdatedAt value of all included workspace configs.
+// WARNING: If all workspaces have not been updated since the last request, it returns the zero time.
 func (wcs *WorkspaceConfigs) UpdatedAt() time.Time {
-	var updateAt time.Time
+	var updatedAt time.Time
 	for _, wc := range wcs.Workspaces {
-		if wc != nil && wc.UpdatedAt.After(updateAt) {
-			updateAt = wc.UpdatedAt
+		if wc != nil && wc.UpdatedAt.After(updatedAt) {
+			updatedAt = wc.UpdatedAt
 		}
 	}
-
-	return updateAt
+	return updatedAt
 }
 
 // Empty returns an empty WorkspaceConfigs object.

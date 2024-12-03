@@ -29,6 +29,7 @@ func (c *Client) Url(path string, updatedAfter time.Time) string {
 	if !updatedAfter.IsZero() {
 		queryValues := v.Query()
 		queryValues.Add("updatedAfter", updatedAfter.Format(updatedAfterTimeFormat))
+		v.RawQuery = queryValues.Encode()
 	}
 
 	return v.String()
