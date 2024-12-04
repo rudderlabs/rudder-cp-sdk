@@ -39,6 +39,12 @@ func setupControlPlaneSDK() (*cpsdk.ControlPlane, error) {
 	options := []cpsdk.Option{
 		cpsdk.WithBaseUrl(apiUrl),
 		cpsdk.WithLogger(log),
+		cpsdk.WithPoller(
+			cpsdk.WithPollingInterval(1*time.Second),
+			cpsdk.WithPollingBackoffInitialInterval(1*time.Second),
+			cpsdk.WithPollingBackoffMaxInterval(1*time.Minute),
+			cpsdk.WithPollingBackoffMultiplier(1.5),
+		),
 	}
 
 	if namespace != "" {
