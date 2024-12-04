@@ -24,10 +24,6 @@ const (
 	defaultBaseUrlV2 = "https://dp.api.rudderstack.com"
 )
 
-/*
-TODO way to hook metrics
-*/
-
 type ControlPlane struct {
 	baseUrl           *url.URL
 	baseUrlV2         *url.URL

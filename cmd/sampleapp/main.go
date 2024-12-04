@@ -16,6 +16,11 @@ import (
 
 var log logger.Logger
 
+/**
+* TODO way to hook metrics
+* TODO use the diff package to update the cache with the new workspace configs
+**/
+
 func main() {
 	// Setting up a logger using the rudder-go-kit package
 	c := config.New()

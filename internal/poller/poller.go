@@ -100,11 +100,6 @@ func (p *Poller) Run(ctx context.Context) {
 	}
 }
 
-/*
-TODO we should detect inconsistencies, like if a workspace that we are not aware of is returned with null
-as if it wasn't updated since the last call but we never received it. in that case we should log an error
-and trigger a full update.
-*/
 func (p *Poller) poll(ctx context.Context) error {
 	p.log.Debugn("polling for workspace configs", logger.NewTimeField("updatedAt", p.updatedAt))
 
