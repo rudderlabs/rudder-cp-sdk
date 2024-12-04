@@ -26,10 +26,6 @@ const (
 
 /*
 TODO way to hook metrics
-
-TODO think of an abstracted way to handle diffs from updatedAfter even though we might not know
-the object type. we could get functions that will tell us whether a workspace exists or not or a function to
-set it/update it.
 */
 
 type ControlPlane struct {

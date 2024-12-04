@@ -1,0 +1,58 @@
+{
+	"workspaces": {
+		"workspace1": {
+			"sources": {
+				"source1": {
+					"name": "Dev Integration Test 1",
+					"writeKey": "writeKey1",
+					"sourceDefinitionName": "webhook",
+					"enabled": true,
+					"config": {
+						"k1": "v1",
+						"k2": 123,
+						"k3": true,
+						"k4": 123.123
+					}
+				}
+			},
+			"destinations": {
+				"destination1": {"name":"Amplitude","enabled":true}
+			},
+			"connections": {
+				"connectionID1": {
+					"sourceId": "source1",
+					"destinationId": "destination1",
+					"processorEnabled": true
+				}
+			},
+			"updatedAt": "2021-09-01T01:02:03Z"
+		},
+		"workspace2": {
+			"sources": {
+				"source2": {
+					"name": "Dev Integration Test 2",
+					"writeKey": "writeKey2",
+					"sourceDefinitionName": "webhook",
+					"enabled": true,
+					"config": {
+						"k5": "v1",
+						"k6": 123,
+						"k7": true,
+						"k8": 123.123
+					}
+				}
+			},
+			"destinations": {
+				"destination2": {"name":"Postgres","enabled":true}
+			},
+			"connections": {
+				"connectionID2": {
+					"sourceId": "source2",
+					"destinationId": "destination2",
+					"processorEnabled": true
+				}
+			},
+			"updatedAt": "2021-09-01T06:06:06Z"
+		}
+	}
+}

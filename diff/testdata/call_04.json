@@ -1,0 +1,30 @@
+{
+	"workspaces": {
+		"workspace1": null,
+		"workspace3": {
+			"sources": {
+				"source3": {
+					"name": "Dev Integration Test 3 - DISABLED",
+					"writeKey": "writeKey3",
+					"sourceDefinitionName": "webhook",
+					"enabled": false,
+					"config": {
+						"k9": "v1",
+						"k0": 123
+					}
+				}
+			},
+			"destinations": {
+				"destination3": {"name":"MySQL","enabled":true}
+			},
+			"connections": {
+				"connectionID3": {
+					"sourceId": "source3",
+					"destinationId": "destination3",
+					"processorEnabled": true
+				}
+			},
+			"updatedAt": "2021-09-01T06:06:08Z"
+		}
+	}
+}
