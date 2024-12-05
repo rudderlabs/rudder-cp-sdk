@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	cpsdk "github.com/rudderlabs/rudder-cp-sdk"
@@ -16,10 +17,6 @@ import (
 	"github.com/rudderlabs/rudder-go-kit/logger"
 	obskit "github.com/rudderlabs/rudder-observability-kit/go/labels"
 )
-
-/**
-* TODO use the diff package to update the cache with the new workspace configs
-**/
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
@@ -92,24 +89,29 @@ func setupWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
 	)
 }
 
-func setupClientWithPoller(log logger.Logger) (func(context.Context), error) {
+func setupClientWithPoller[K string](
+	cache *modelv2.WorkspaceConfigs[K, *modelv2.WorkspaceConfig],
+	cacheMu *sync.RWMutex,
+	log logger.Logger,
+) (func(context.Context), error) {
 	sdk, err := setupControlPlaneSDK(log)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up control plane sdk: %v", err)
 	}
 
-	cache := &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{}
-	updater := diff.Updater[string, *modelv2.WorkspaceConfig]{}
+	updater := diff.Updater[K, *modelv2.WorkspaceConfig]{}
 
-	p, err := setupWorkspaceConfigsPoller[string, *modelv2.WorkspaceConfig](
-		func(ctx context.Context, l diff.UpdateableList[string, *modelv2.WorkspaceConfig], updatedAfter time.Time) error {
+	p, err := setupWorkspaceConfigsPoller[K, *modelv2.WorkspaceConfig](
+		func(ctx context.Context, l diff.UpdateableList[K, *modelv2.WorkspaceConfig], updatedAfter time.Time) error {
 			return sdk.GetWorkspaceConfigs(ctx, l, updatedAfter)
 		},
-		func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, error) {
+		func(list diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, error) {
+			cacheMu.Lock()
+			defer cacheMu.Unlock()
 			return updater.UpdateCache(list, cache)
 		},
-		func() diff.UpdateableList[string, *modelv2.WorkspaceConfig] {
-			return &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{}
+		func() diff.UpdateableList[K, *modelv2.WorkspaceConfig] {
+			return &modelv2.WorkspaceConfigs[K, *modelv2.WorkspaceConfig]{}
 		},
 		log,
 	)
@@ -122,12 +124,25 @@ func setupClientWithPoller(log logger.Logger) (func(context.Context), error) {
 
 // run is the main function that uses the SDK
 func run(ctx context.Context, log logger.Logger) error {
-	poll, err := setupClientWithPoller(log)
+	var (
+		cache   = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{}
+		cacheMu = &sync.RWMutex{}
+	)
+
+	poll, err := setupClientWithPoller(cache, cacheMu, log)
 	if err != nil {
 		return fmt.Errorf("error setting up client with poller: %v", err)
 	}
 
-	poll(ctx) // blocking call, runs until context is cancelled
+	pollingDone := make(chan struct{})
+	go func() {
+		poll(ctx) // blocking call, runs until context is cancelled
+		close(pollingDone)
+	}()
+
+	cacheMu.RLock()
+	// do something with "cache" here
+	cacheMu.RUnlock()
 
 	return nil
 }
