@@ -20,7 +20,7 @@ func TestPollerNew(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("should return error if client is nil", func(t *testing.T) {
+	t.Run("should return error if getter is nil", func(t *testing.T) {
 		p, err := poller.New(func(*modelv2.WorkspaceConfigs) error { return nil })
 		require.Nil(t, p)
 		require.Error(t, err)
@@ -28,7 +28,7 @@ func TestPollerNew(t *testing.T) {
 }
 
 func TestPoller(t *testing.T) {
-	t.Run("should poll using client and workspace configs handler", func(t *testing.T) {
+	t.Run("should poll using getter and workspace configs handler", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -64,7 +64,7 @@ func TestPoller(t *testing.T) {
 		wg.Wait()
 	})
 
-	t.Run("should skip failed client requests", func(t *testing.T) {
+	t.Run("should skip failed getter requests", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 

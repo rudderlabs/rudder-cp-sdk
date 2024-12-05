@@ -4,35 +4,39 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	cpsdk "github.com/rudderlabs/rudder-cp-sdk"
+	"github.com/rudderlabs/rudder-cp-sdk/diff"
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/poller"
 	"github.com/rudderlabs/rudder-go-kit/config"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 	obskit "github.com/rudderlabs/rudder-observability-kit/go/labels"
 )
-
-var log logger.Logger
 
 /**
 * TODO use the diff package to update the cache with the new workspace configs
 **/
 
 func main() {
-	// Setting up a logger using the rudder-go-kit package
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	defer cancel()
+
 	c := config.New()
 	loggerFactory := logger.NewFactory(c)
-	log = loggerFactory.NewLogger()
+	log := loggerFactory.NewLogger()
 
-	if err := run(); err != nil {
+	if err := run(ctx, log); err != nil {
 		log.Fataln("main error", obskit.Error(err))
+		os.Exit(1)
 	}
 }
 
 // setupControlPlaneSDK creates a new SDK instance using the environment variables
-func setupControlPlaneSDK() (*cpsdk.ControlPlane, error) {
+func setupControlPlaneSDK(log logger.Logger) (*cpsdk.ControlPlane, error) {
 	apiUrl := os.Getenv("CPSDK_API_URL")
 	workspaceToken := os.Getenv("CPSDK_WORKSPACE_TOKEN")
 	namespace := os.Getenv("CPSDK_NAMESPACE")
@@ -43,19 +47,6 @@ func setupControlPlaneSDK() (*cpsdk.ControlPlane, error) {
 	options := []cpsdk.Option{
 		cpsdk.WithBaseUrl(apiUrl),
 		cpsdk.WithLogger(log),
-		cpsdk.WithPoller(
-			cpsdk.WithPollingInterval(1*time.Second),
-			cpsdk.WithPollingBackoffInitialInterval(1*time.Second),
-			cpsdk.WithPollingBackoffMaxInterval(1*time.Minute),
-			cpsdk.WithPollingBackoffMultiplier(1.5),
-			cpsdk.WithPollingOnResponse(func(err error) {
-				if err != nil {
-					// Bump metric on failure
-				} else {
-					// Bump metric on success
-				}
-			}),
-		),
 	}
 
 	if namespace != "" {
@@ -79,25 +70,64 @@ func setupControlPlaneSDK() (*cpsdk.ControlPlane, error) {
 	return cpsdk.New(options...)
 }
 
+func setupWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
+	getter poller.WorkspaceConfigsGetter[K, T],
+	handler poller.WorkspaceConfigsHandler[K, T],
+	constructor func() diff.UpdateableList[K, T],
+	log logger.Logger,
+) (*poller.WorkspaceConfigsPoller[K, T], error) {
+	return poller.NewWorkspaceConfigsPoller(getter, handler, constructor,
+		poller.WithLogger[K, T](log.Child("poller")),
+		poller.WithPollingInterval[K, T](1*time.Second),
+		poller.WithPollingBackoffInitialInterval[K, T](1*time.Second),
+		poller.WithPollingBackoffMaxInterval[K, T](1*time.Minute),
+		poller.WithPollingBackoffMultiplier[K, T](1.5),
+		poller.WithOnResponse[K, T](func(err error) {
+			if err != nil {
+				// Bump metric on failure
+			} else {
+				// Bump metric on success
+			}
+		}),
+	)
+}
+
+func setupClientWithPoller(log logger.Logger) (func(context.Context), error) {
+	sdk, err := setupControlPlaneSDK(log)
+	if err != nil {
+		return nil, fmt.Errorf("error setting up control plane sdk: %v", err)
+	}
+
+	cache := &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{}
+	updater := diff.Updater[string, *modelv2.WorkspaceConfig]{}
+
+	p, err := setupWorkspaceConfigsPoller[string, *modelv2.WorkspaceConfig](
+		func(ctx context.Context, l diff.UpdateableList[string, *modelv2.WorkspaceConfig], updatedAfter time.Time) error {
+			return sdk.GetWorkspaceConfigs(ctx, l, updatedAfter)
+		},
+		func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, error) {
+			return updater.UpdateCache(list, cache)
+		},
+		func() diff.UpdateableList[string, *modelv2.WorkspaceConfig] {
+			return &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{}
+		},
+		log,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting up poller: %v", err)
+	}
+
+	return p.Run, nil
+}
+
 // run is the main function that uses the SDK
-func run() error {
-	sdk, err := setupControlPlaneSDK()
+func run(ctx context.Context, log logger.Logger) error {
+	poll, err := setupClientWithPoller(log)
 	if err != nil {
-		return fmt.Errorf("error setting up control plane sdk: %v", err)
-	}
-	defer func() { _ = sdk.Close(context.Background()) }()
-
-	var wcs modelv2.WorkspaceConfigs
-	err = sdk.Client.GetWorkspaceConfigs(context.Background(), &wcs, time.Time{})
-	if err != nil {
-		return fmt.Errorf("error getting workspace configs: %v", err)
+		return fmt.Errorf("error setting up client with poller: %v", err)
 	}
 
-	// Some time passes and we want to get the latest changes only, without re-fetching the entire config
-	err = sdk.Client.GetWorkspaceConfigs(context.Background(), &wcs, wcs.UpdatedAt())
-	if err != nil {
-		return fmt.Errorf("error getting workspace configs: %v", err)
-	}
+	poll(ctx) // blocking call, runs until context is cancelled
 
 	return nil
 }

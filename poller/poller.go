@@ -7,19 +7,24 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 
-	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/diff"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 	obskit "github.com/rudderlabs/rudder-observability-kit/go/labels"
 )
 
-// Poller periodically polls for new workspace configs and runs a handler on them.
-type Poller struct {
-	client     Client
-	interval   time.Duration
-	handler    WorkspaceConfigHandler
-	updatedAt  time.Time
-	onResponse func(error)
-	backoff    struct {
+type WorkspaceConfigsHandler[K comparable, T diff.UpdateableElement] func(list diff.UpdateableList[K, T]) (time.Time, error)
+
+type WorkspaceConfigsGetter[K comparable, T diff.UpdateableElement] func(ctx context.Context, l diff.UpdateableList[K, T], updatedAfter time.Time) error
+
+// WorkspaceConfigsPoller periodically polls for new workspace configs and runs a handler on them.
+type WorkspaceConfigsPoller[K comparable, T diff.UpdateableElement] struct {
+	getter      WorkspaceConfigsGetter[K, T]
+	handler     WorkspaceConfigsHandler[K, T]
+	constructor func() diff.UpdateableList[K, T]
+	interval    time.Duration
+	updatedAt   time.Time
+	onResponse  func(error)
+	backoff     struct {
 		initialInterval time.Duration
 		maxInterval     time.Duration
 		multiplier      float64
@@ -27,17 +32,18 @@ type Poller struct {
 	log logger.Logger
 }
 
-type WorkspaceConfigHandler func(*modelv2.WorkspaceConfigs) error
-
-type Client interface {
-	GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error
-}
-
-func New(handler WorkspaceConfigHandler, opts ...Option) (*Poller, error) {
-	p := &Poller{
-		interval: 1 * time.Second,
-		handler:  handler,
-		log:      logger.NOP,
+func NewWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
+	getter WorkspaceConfigsGetter[K, T],
+	handler WorkspaceConfigsHandler[K, T],
+	constructor func() diff.UpdateableList[K, T],
+	opts ...Option[K, T],
+) (*WorkspaceConfigsPoller[K, T], error) {
+	p := &WorkspaceConfigsPoller[K, T]{
+		getter:      getter,
+		handler:     handler,
+		constructor: constructor,
+		interval:    1 * time.Second,
+		log:         logger.NOP,
 	}
 	p.backoff.initialInterval = 1 * time.Second
 	p.backoff.maxInterval = 1 * time.Minute
@@ -51,8 +57,12 @@ func New(handler WorkspaceConfigHandler, opts ...Option) (*Poller, error) {
 		return nil, fmt.Errorf("handler is required")
 	}
 
-	if p.client == nil {
-		return nil, fmt.Errorf("client is required")
+	if p.constructor == nil {
+		return nil, fmt.Errorf("constructor is required")
+	}
+
+	if p.getter == nil {
+		return nil, fmt.Errorf("getter is required")
 	}
 
 	return p, nil
@@ -60,7 +70,7 @@ func New(handler WorkspaceConfigHandler, opts ...Option) (*Poller, error) {
 
 // Run starts polling for new workspace configs every interval.
 // It will stop polling when the context is cancelled.
-func (p *Poller) Run(ctx context.Context) {
+func (p *WorkspaceConfigsPoller[K, T]) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -107,31 +117,28 @@ func (p *Poller) Run(ctx context.Context) {
 	}
 }
 
-func (p *Poller) poll(ctx context.Context) error {
+func (p *WorkspaceConfigsPoller[K, T]) poll(ctx context.Context) error {
 	p.log.Debugn("polling for workspace configs", logger.NewTimeField("updatedAt", p.updatedAt))
 
-	var wcs modelv2.WorkspaceConfigs
-	err := p.client.GetWorkspaceConfigs(ctx, &wcs, p.updatedAt)
+	response := p.constructor()
+	err := p.getter(ctx, response, p.updatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to get updated workspace configs: %w", err)
 	}
 
-	if err := p.handler(&wcs); err != nil {
+	updatedAt, err := p.handler(response)
+	if err != nil {
 		return fmt.Errorf("failed to handle workspace configs: %w", err)
 	}
 
-	// only update updatedAt if we managed to handle the response
-	// so that we don't miss any updates in case of an error
-	if !wcs.UpdatedAt().IsZero() {
-		// There is a case where all workspaces have not been updated since the last request.
-		// In that case updatedAt will be zero.
-		p.updatedAt = wcs.UpdatedAt()
+	if !updatedAt.IsZero() {
+		p.updatedAt = updatedAt
 	}
 
 	return nil
 }
 
-func (p *Poller) nextBackOff() func() time.Duration {
+func (p *WorkspaceConfigsPoller[K, T]) nextBackOff() func() time.Duration {
 	return backoff.NewExponentialBackOff(
 		backoff.WithInitialInterval(p.backoff.initialInterval),
 		backoff.WithMaxInterval(p.backoff.maxInterval),

@@ -1,15 +1,48 @@
 package modelv2
 
-import "time"
+import (
+	"iter"
+	"time"
+
+	"github.com/rudderlabs/rudder-cp-sdk/diff"
+)
+
+var _ diff.UpdateableList[string, *WorkspaceConfig] = &WorkspaceConfigs[string, *WorkspaceConfig]{}
 
 // WorkspaceConfigs represents workspace configurations of one or more workspaces, as well as definitions shared by all of them.
-type WorkspaceConfigs struct {
-	// Workspaces is an map of workspace configurations. The key is a workspace ID.
-	Workspaces map[string]*WorkspaceConfig `json:"workspaces"`
+type WorkspaceConfigs[K string, T *WorkspaceConfig] struct {
+	// Workspaces is a map of workspace configurations. The key is a workspace ID.
+	Workspaces map[K]T `json:"workspaces"`
 	// SourceDefinitions is a map of source definitions. The key is a source definition name.
 	SourceDefinitions map[string]*SourceDefinition `json:"sourceDefinitions"`
 	// DestinationDefinitions is a map of destination definitions. The key is a destination definition name.
 	DestinationDefinitions map[string]*DestinationDefinition `json:"destinationDefinitions"`
+}
+
+func (wcs *WorkspaceConfigs[K, T]) List() iter.Seq2[K, T] {
+	return func(yield func(K, T) bool) {
+		for key, wc := range wcs.Workspaces {
+			if !yield(key, wc) {
+				break
+			}
+		}
+	}
+}
+
+func (wcs *WorkspaceConfigs[K, T]) GetElementByKey(id K) (T, bool) {
+	wc, ok := wcs.Workspaces[id]
+	return wc, ok
+}
+
+func (wcs *WorkspaceConfigs[K, T]) SetElementByKey(id K, object T) {
+	if wcs.Workspaces == nil {
+		wcs.Workspaces = make(map[K]T)
+	}
+	wcs.Workspaces[id] = object
+}
+
+func (wcs *WorkspaceConfigs[K, T]) Reset() {
+	wcs.Workspaces = make(map[K]T)
 }
 
 type WorkspaceConfig struct {
@@ -29,23 +62,5 @@ type WorkspaceConfig struct {
 	UpdatedAt                        time.Time                          `json:"updatedAt"`
 }
 
-// UpdatedAt returns the maximum UpdatedAt value of all included workspace configs.
-// WARNING: If all workspaces have not been updated since the last request, it returns the zero time.
-func (wcs *WorkspaceConfigs) UpdatedAt() time.Time {
-	var updatedAt time.Time
-	for _, wc := range wcs.Workspaces {
-		if wc != nil && wc.UpdatedAt.After(updatedAt) {
-			updatedAt = wc.UpdatedAt
-		}
-	}
-	return updatedAt
-}
-
-// Empty returns an empty WorkspaceConfigs object.
-func Empty() *WorkspaceConfigs {
-	return &WorkspaceConfigs{
-		Workspaces:             make(map[string]*WorkspaceConfig),
-		SourceDefinitions:      make(map[string]*SourceDefinition),
-		DestinationDefinitions: make(map[string]*DestinationDefinition),
-	}
-}
+func (wc *WorkspaceConfig) GetUpdatedAt() time.Time { return wc.UpdatedAt }
+func (wc *WorkspaceConfig) IsNil() bool             { return wc == nil }
