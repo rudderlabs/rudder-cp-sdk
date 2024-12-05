@@ -27,7 +27,6 @@ func BenchmarkGetWorkspaceConfigs(b *testing.B) {
 		WithNamespaceIdentity(namespace, identity),
 	)
 	require.NoError(b, err)
-	defer func() { _ = cpSDK.Close(context.Background()) }()
 
 	var workspaceConfigs WorkspaceConfigs
 	err = cpSDK.GetWorkspaceConfigs(context.Background(), &workspaceConfigs, time.Time{})

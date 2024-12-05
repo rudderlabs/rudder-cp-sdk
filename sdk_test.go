@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rudderlabs/rudder-cp-sdk/diff"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
@@ -98,10 +100,11 @@ func TestIncrementalUpdates(t *testing.T) {
 		WithNamespaceIdentity(namespace, secret),
 	)
 	require.NoError(t, err)
-	defer func() { _ = cpSDK.Close(context.Background()) }()
+
+	getLatestUpdatedAt := getLatestUpdatedAt() // this is to cache the latestUpdatedAt
 
 	// send the request the first time
-	var wcs modelv2.WorkspaceConfigs
+	wcs := &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{}
 	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, time.Time{})
 	require.NoError(t, err)
 	require.Len(t, wcs.Workspaces, 2)
@@ -110,12 +113,13 @@ func TestIncrementalUpdates(t *testing.T) {
 	require.Contains(t, wcs.Workspaces, "2bVMV2JiAJe42OXZrzyvJI75v0N")
 	require.NotNil(t, wcs.Workspaces["2bVMV2JiAJe42OXZrzyvJI75v0N"])
 	require.Empty(t, receivedUpdatedAfter, "The first request should not have updatedAfter in the query params")
-	require.Equal(t, "2024-11-27T20:13:30.647Z", wcs.UpdatedAt().Format(updatedAfterTimeFormat))
+	latestUpdatedAt, updatedAt := getLatestUpdatedAt(wcs)
+	require.Equal(t, "2024-11-27T20:13:30.647Z", latestUpdatedAt.Format(updatedAfterTimeFormat))
+	require.Equal(t, "2024-11-27T20:13:30.647Z", updatedAt.Format(updatedAfterTimeFormat))
 
 	// send the request again, should receive the new dummy workspace and no updates for the other 2 workspaces
-	updatedAt := wcs.UpdatedAt()
-	wcs = modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, updatedAt)
+	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	require.Len(t, wcs.Workspaces, 3)
 	require.Contains(t, wcs.Workspaces, "2hCBi02C8xYS8Rsy1m9bJjTlKy6")
@@ -125,15 +129,16 @@ func TestIncrementalUpdates(t *testing.T) {
 	require.Contains(t, wcs.Workspaces, "dummy")
 	require.NotNil(t, wcs.Workspaces["dummy"])
 	require.Len(t, receivedUpdatedAfter, 1)
-	require.Equal(t, "2024-11-27T20:14:30.647Z", wcs.UpdatedAt().Format(updatedAfterTimeFormat))
+	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
+	require.Equal(t, "2024-11-27T20:14:30.647Z", latestUpdatedAt.Format(updatedAfterTimeFormat))
+	require.Equal(t, "2024-11-27T20:14:30.647Z", updatedAt.Format(updatedAfterTimeFormat))
 	expectedUpdatedAfter, err := time.Parse(updatedAfterTimeFormat, "2024-11-27T20:13:30.647Z")
 	require.NoError(t, err)
 	require.Equal(t, receivedUpdatedAfter[0], expectedUpdatedAfter, updatedAfterTimeFormat)
 
 	// send the request again, should receive the updated dummy workspace
-	updatedAt = wcs.UpdatedAt()
-	wcs = modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, updatedAt)
+	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	require.Len(t, wcs.Workspaces, 3)
 	require.Contains(t, wcs.Workspaces, "2hCBi02C8xYS8Rsy1m9bJjTlKy6")
@@ -143,17 +148,20 @@ func TestIncrementalUpdates(t *testing.T) {
 	require.Contains(t, wcs.Workspaces, "dummy")
 	require.NotNil(t, wcs.Workspaces["dummy"])
 	require.Len(t, receivedUpdatedAfter, 2)
-	require.Equal(t, "2024-11-27T20:15:30.647Z", wcs.UpdatedAt().Format(updatedAfterTimeFormat))
+	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
+	require.Equal(t, "2024-11-27T20:15:30.647Z", latestUpdatedAt.Format(updatedAfterTimeFormat))
+	require.Equal(t, "2024-11-27T20:15:30.647Z", updatedAt.Format(updatedAfterTimeFormat))
 	expectedUpdatedAfter, err = time.Parse(updatedAfterTimeFormat, "2024-11-27T20:14:30.647Z")
 	require.NoError(t, err)
 	require.Equal(t, receivedUpdatedAfter[1], expectedUpdatedAfter, updatedAfterTimeFormat)
 
 	// send the request again, should not receive dummy since it was deleted
-	updatedAt = wcs.UpdatedAt()
-	wcs = modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, updatedAt)
+	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
-	require.Truef(t, wcs.UpdatedAt().IsZero(), "%+v", wcs)
+	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
+	require.Truef(t, updatedAt.IsZero(), "%+v", wcs)
+	require.Equal(t, "2024-11-27T20:15:30.647Z", latestUpdatedAt.Format(updatedAfterTimeFormat))
 	require.Len(t, wcs.Workspaces, 2)
 	require.Contains(t, wcs.Workspaces, "2hCBi02C8xYS8Rsy1m9bJjTlKy6")
 	require.Nil(t, wcs.Workspaces["2hCBi02C8xYS8Rsy1m9bJjTlKy6"], "The workspace should have not been updated")
@@ -165,10 +173,12 @@ func TestIncrementalUpdates(t *testing.T) {
 	require.Equal(t, receivedUpdatedAfter[2], expectedUpdatedAfter, updatedAfterTimeFormat)
 
 	// send the request again, the updatedAfter should be the same as the last request since no updates
-	wcs = modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, updatedAt)
+	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
-	require.Truef(t, wcs.UpdatedAt().IsZero(), "%+v", wcs)
+	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
+	require.Truef(t, updatedAt.IsZero(), "%+v", wcs)
+	require.Equal(t, "2024-11-27T20:15:30.647Z", latestUpdatedAt.Format(updatedAfterTimeFormat))
 	require.Len(t, wcs.Workspaces, 2)
 	require.Contains(t, wcs.Workspaces, "2hCBi02C8xYS8Rsy1m9bJjTlKy6")
 	require.Nil(t, wcs.Workspaces["2hCBi02C8xYS8Rsy1m9bJjTlKy6"], "The workspace should have not been updated")
@@ -181,10 +191,12 @@ func TestIncrementalUpdates(t *testing.T) {
 
 	// last request, ideally the application should detect that there is an inconsistency and trigger a full update
 	// although that behaviour is not tested here
-	wcs = modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, updatedAt)
+	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
-	require.Truef(t, wcs.UpdatedAt().IsZero(), "%+v", wcs)
+	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
+	require.Truef(t, updatedAt.IsZero(), "%+v", wcs)
+	require.Equal(t, "2024-11-27T20:15:30.647Z", latestUpdatedAt.Format(updatedAfterTimeFormat))
 	require.Len(t, wcs.Workspaces, 1)
 	require.Contains(t, wcs.Workspaces, "someWorkspaceID")
 	require.Nil(t, wcs.Workspaces["someWorkspaceID"], "The workspace should have not been updated")
@@ -192,4 +204,23 @@ func TestIncrementalUpdates(t *testing.T) {
 	expectedUpdatedAfter, err = time.Parse(updatedAfterTimeFormat, "2024-11-27T20:15:30.647Z")
 	require.NoError(t, err)
 	require.Equal(t, receivedUpdatedAfter[4], expectedUpdatedAfter, updatedAfterTimeFormat)
+}
+
+func getLatestUpdatedAt() func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, time.Time) {
+	var latestUpdatedAt time.Time
+	return func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, time.Time) {
+		var localUpdatedAt time.Time
+		for _, wc := range list.List() {
+			if wc.IsNil() || wc.GetUpdatedAt().IsZero() {
+				continue
+			}
+			if wc.GetUpdatedAt().After(latestUpdatedAt) {
+				latestUpdatedAt = wc.GetUpdatedAt()
+			}
+			if wc.GetUpdatedAt().After(localUpdatedAt) {
+				localUpdatedAt = wc.GetUpdatedAt()
+			}
+		}
+		return latestUpdatedAt, localUpdatedAt
+	}
 }
