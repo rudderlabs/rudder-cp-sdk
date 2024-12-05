@@ -12,9 +12,9 @@ import (
 	obskit "github.com/rudderlabs/rudder-observability-kit/go/labels"
 )
 
-type WorkspaceConfigsHandler[K comparable, T diff.UpdateableElement] func(list diff.UpdateableList[K, T]) (time.Time, error)
-
 type WorkspaceConfigsGetter[K comparable, T diff.UpdateableElement] func(ctx context.Context, l diff.UpdateableList[K, T], updatedAfter time.Time) error
+
+type WorkspaceConfigsHandler[K comparable, T diff.UpdateableElement] func(list diff.UpdateableList[K, T]) (time.Time, error)
 
 // WorkspaceConfigsPoller periodically polls for new workspace configs and runs a handler on them.
 type WorkspaceConfigsPoller[K comparable, T diff.UpdateableElement] struct {
@@ -53,16 +53,16 @@ func NewWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
 		opt(p)
 	}
 
+	if p.getter == nil {
+		return nil, fmt.Errorf("getter is required")
+	}
+
 	if p.handler == nil {
 		return nil, fmt.Errorf("handler is required")
 	}
 
 	if p.constructor == nil {
 		return nil, fmt.Errorf("constructor is required")
-	}
-
-	if p.getter == nil {
-		return nil, fmt.Errorf("getter is required")
 	}
 
 	return p, nil
