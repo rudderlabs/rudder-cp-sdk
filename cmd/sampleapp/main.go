@@ -125,6 +125,8 @@ func setupClientWithPoller[K string](
 // run is the main function that uses the SDK
 func run(ctx context.Context, log logger.Logger) error {
 	var (
+		// WARNING: if you don't want to use modelv2.WorkspaceConfigs because you're interested in a smaller subset of
+		// the data, then have a look at diff_test.go for an example of how to implement a custom UpdateableList.
 		cache   = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{}
 		cacheMu = &sync.RWMutex{}
 	)
