@@ -80,9 +80,9 @@ func setupWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
 		poller.WithPollingBackoffMaxInterval[K, T](1*time.Minute),
 		poller.WithPollingBackoffMultiplier[K, T](1.5),
 		poller.WithOnResponse[K, T](func(err error) {
-			if err != nil {
+			if err != nil { // nolint:staticcheck
 				// Bump metric on failure
-			} else {
+			} else { // nolint:staticcheck
 				// Bump metric on success
 			}
 		}),
@@ -144,7 +144,7 @@ func run(ctx context.Context, log logger.Logger) error {
 
 	cacheMu.RLock()
 	// do something with "cache" here
-	cacheMu.RUnlock()
+	cacheMu.RUnlock() // nolint:staticcheck
 
 	return nil
 }
