@@ -31,3 +31,7 @@ func WithPollingBackoffMaxInterval(d time.Duration) Option {
 func WithPollingBackoffMultiplier(m float64) Option {
 	return func(p *Poller) { p.backoff.multiplier = m }
 }
+
+func WithOnResponse(f func(error)) Option {
+	return func(p *Poller) { p.onResponse = f }
+}

@@ -14,11 +14,12 @@ import (
 
 // Poller periodically polls for new workspace configs and runs a handler on them.
 type Poller struct {
-	client    Client
-	interval  time.Duration
-	handler   WorkspaceConfigHandler
-	updatedAt time.Time
-	backoff   struct {
+	client     Client
+	interval   time.Duration
+	handler    WorkspaceConfigHandler
+	updatedAt  time.Time
+	onResponse func(error)
+	backoff    struct {
 		initialInterval time.Duration
 		maxInterval     time.Duration
 		multiplier      float64
@@ -66,6 +67,9 @@ func (p *Poller) Run(ctx context.Context) {
 			return
 		case <-time.After(p.interval):
 			err := p.poll(ctx)
+			if p.onResponse != nil {
+				p.onResponse(err)
+			}
 			if err == nil {
 				continue
 			}
@@ -80,6 +84,9 @@ func (p *Poller) Run(ctx context.Context) {
 					return
 				case <-time.After(delay):
 					err = p.poll(ctx)
+					if p.onResponse != nil {
+						p.onResponse(err)
+					}
 					if err != nil {
 						p.log.Warnn("failed to poll workspace configs after delay",
 							logger.NewDurationField("delay", delay),

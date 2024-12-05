@@ -17,7 +17,6 @@ import (
 var log logger.Logger
 
 /**
-* TODO way to hook metrics
 * TODO use the diff package to update the cache with the new workspace configs
 **/
 
@@ -49,6 +48,13 @@ func setupControlPlaneSDK() (*cpsdk.ControlPlane, error) {
 			cpsdk.WithPollingBackoffInitialInterval(1*time.Second),
 			cpsdk.WithPollingBackoffMaxInterval(1*time.Minute),
 			cpsdk.WithPollingBackoffMultiplier(1.5),
+			cpsdk.WithPollingOnResponse(func(err error) {
+				if err != nil {
+					// Bump metric on failure
+				} else {
+					// Bump metric on success
+				}
+			}),
 		),
 	}
 

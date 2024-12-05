@@ -132,6 +132,7 @@ func (cp *ControlPlane) setupPoller() error {
 		poller.WithPollingBackoffInitialInterval(cp.pollerConfig.backoffInitialInterval),
 		poller.WithPollingBackoffMaxInterval(cp.pollerConfig.backoffMaxInterval),
 		poller.WithPollingBackoffMultiplier(cp.pollerConfig.backoffMultiplier),
+		poller.WithOnResponse(cp.pollerConfig.onResponse),
 		poller.WithLogger(cp.log),
 	)
 	if err != nil {

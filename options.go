@@ -89,6 +89,7 @@ type pollerConfig struct {
 	backoffInitialInterval time.Duration
 	backoffMaxInterval     time.Duration
 	backoffMultiplier      float64
+	onResponse             func(error)
 }
 
 func WithPollingInterval(interval time.Duration) PollerOption {
@@ -105,4 +106,8 @@ func WithPollingBackoffMaxInterval(interval time.Duration) PollerOption {
 
 func WithPollingBackoffMultiplier(multiplier float64) PollerOption {
 	return func(pc *pollerConfig) { pc.backoffMultiplier = multiplier }
+}
+
+func WithPollingOnResponse(onResponse func(error)) PollerOption {
+	return func(pc *pollerConfig) { pc.onResponse = onResponse }
 }
