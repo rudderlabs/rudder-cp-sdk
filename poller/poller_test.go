@@ -19,8 +19,8 @@ func TestPollerNew(t *testing.T) {
 	getter := func(ctx context.Context, l diff.UpdateableList[string, diff.UpdateableElement], updatedAfter time.Time) error {
 		return nil
 	}
-	handler := func(list diff.UpdateableList[string, diff.UpdateableElement]) (time.Time, error) {
-		return time.Time{}, nil
+	handler := func(list diff.UpdateableList[string, diff.UpdateableElement]) (time.Time, bool, error) {
+		return time.Time{}, false, nil
 	}
 	constructor := func() diff.UpdateableList[string, diff.UpdateableElement] {
 		return nil
@@ -70,7 +70,7 @@ func TestPoller(t *testing.T) {
 		expectedResponseIndex := 0
 
 		getLatestUpdatedAt := getLatestUpdatedAt()
-		runTestPoller(t, ctx, client, func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, error) {
+		runTestPoller(t, ctx, client, func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
 			defer wg.Done()
 
 			require.Equalf(t, mockedResponses[expectedResponseIndex], list, "Response index: %d", expectedResponseIndex)
@@ -80,7 +80,7 @@ func TestPoller(t *testing.T) {
 				cancel()
 			}
 
-			return getLatestUpdatedAt(list), nil
+			return getLatestUpdatedAt(list), true, nil
 		})
 
 		wg.Wait()
@@ -113,7 +113,7 @@ func TestPoller(t *testing.T) {
 		expectedResponseIndex := 0
 
 		getLatestUpdatedAt := getLatestUpdatedAt()
-		runTestPoller(t, ctx, client, func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, error) {
+		runTestPoller(t, ctx, client, func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
 			defer wg.Done()
 
 			require.Equalf(t, mockedResponses[expectedResponseIndex], list, "Response index: %d", expectedResponseIndex)
@@ -123,7 +123,7 @@ func TestPoller(t *testing.T) {
 				cancel()
 			}
 
-			return getLatestUpdatedAt(list), nil
+			return getLatestUpdatedAt(list), true, nil
 		})
 
 		wg.Wait()
@@ -158,10 +158,10 @@ func TestPoller(t *testing.T) {
 		var hasReturnedError bool
 		// start a poller with handler that fails on first attempt and succeeds on second
 		getLatestUpdatedAt := getLatestUpdatedAt()
-		runTestPoller(t, ctx, client, func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, error) {
+		runTestPoller(t, ctx, client, func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
 			if !hasReturnedError {
 				hasReturnedError = true
-				return time.Time{}, errors.New("first call failed")
+				return time.Time{}, false, errors.New("first call failed")
 			}
 
 			expectedResponseIndex++
@@ -171,7 +171,7 @@ func TestPoller(t *testing.T) {
 
 			wg.Done()
 
-			return getLatestUpdatedAt(list), nil
+			return getLatestUpdatedAt(list), true, nil
 		})
 
 		wg.Wait()
@@ -182,7 +182,7 @@ func runTestPoller[K string](
 	t *testing.T,
 	ctx context.Context,
 	client *mockClient,
-	handler func(diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, error),
+	handler func(diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, bool, error),
 ) {
 	t.Helper()
 
@@ -190,7 +190,7 @@ func runTestPoller[K string](
 		func(ctx context.Context, object any, updatedAfter time.Time) error {
 			return client.GetWorkspaceConfigs(ctx, object, updatedAfter)
 		},
-		func(list diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, error) {
+		func(list diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
 			return handler(list)
 		},
 		logger.NOP,

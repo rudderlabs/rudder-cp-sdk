@@ -29,6 +29,6 @@ func WithPollingBackoffMultiplier[K comparable, T diff.UpdateableElement](m floa
 	return func(p *WorkspaceConfigsPoller[K, T]) { p.backoff.multiplier = m }
 }
 
-func WithOnResponse[K comparable, T diff.UpdateableElement](f func(error)) Option[K, T] {
+func WithOnResponse[K comparable, T diff.UpdateableElement](f func(bool, error)) Option[K, T] {
 	return func(p *WorkspaceConfigsPoller[K, T]) { p.onResponse = f }
 }

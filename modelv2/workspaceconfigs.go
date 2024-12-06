@@ -19,6 +19,8 @@ type WorkspaceConfigs[K string, T *WorkspaceConfig] struct {
 	DestinationDefinitions map[string]*DestinationDefinition `json:"destinationDefinitions"`
 }
 
+func (wcs *WorkspaceConfigs[K, T]) Length() int { return len(wcs.Workspaces) }
+
 func (wcs *WorkspaceConfigs[K, T]) List() iter.Seq2[K, T] {
 	return func(yield func(K, T) bool) {
 		for key, wc := range wcs.Workspaces {

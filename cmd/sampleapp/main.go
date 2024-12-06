@@ -79,11 +79,13 @@ func setupWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
 		poller.WithPollingBackoffInitialInterval[K, T](1*time.Second),
 		poller.WithPollingBackoffMaxInterval[K, T](1*time.Minute),
 		poller.WithPollingBackoffMultiplier[K, T](1.5),
-		poller.WithOnResponse[K, T](func(err error) {
-			if err != nil { // nolint:staticcheck
-				// Bump metric on failure
-			} else { // nolint:staticcheck
-				// Bump metric on success
+		poller.WithOnResponse[K, T](func(updated bool, err error) {
+			if err != nil {
+				// e.g. bump metric on failure
+				log.Errorn("failed to poll workspace configs", obskit.Error(err))
+			} else {
+				// e.g. bump metric on success
+				log.Debugn("successfully polled workspace configs", logger.NewBoolField("updated", updated))
 			}
 		}),
 	)
@@ -105,7 +107,7 @@ func setupClientWithPoller[K string](
 		func(ctx context.Context, l diff.UpdateableList[K, *modelv2.WorkspaceConfig], updatedAfter time.Time) error {
 			return sdk.GetWorkspaceConfigs(ctx, l, updatedAfter)
 		},
-		func(list diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, error) {
+		func(list diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
 			cacheMu.Lock()
 			defer cacheMu.Unlock()
 			return updater.UpdateCache(list, cache)

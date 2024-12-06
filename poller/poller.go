@@ -14,7 +14,7 @@ import (
 
 type WorkspaceConfigsGetter[K comparable, T diff.UpdateableElement] func(ctx context.Context, l diff.UpdateableList[K, T], updatedAfter time.Time) error
 
-type WorkspaceConfigsHandler[K comparable, T diff.UpdateableElement] func(list diff.UpdateableList[K, T]) (time.Time, error)
+type WorkspaceConfigsHandler[K comparable, T diff.UpdateableElement] func(list diff.UpdateableList[K, T]) (time.Time, bool, error)
 
 // WorkspaceConfigsPoller periodically polls for new workspace configs and runs a handler on them.
 type WorkspaceConfigsPoller[K comparable, T diff.UpdateableElement] struct {
@@ -23,7 +23,7 @@ type WorkspaceConfigsPoller[K comparable, T diff.UpdateableElement] struct {
 	constructor func() diff.UpdateableList[K, T]
 	interval    time.Duration
 	updatedAt   time.Time
-	onResponse  func(error)
+	onResponse  func(bool, error)
 	backoff     struct {
 		initialInterval time.Duration
 		maxInterval     time.Duration
@@ -76,9 +76,9 @@ func (p *WorkspaceConfigsPoller[K, T]) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(p.interval):
-			err := p.poll(ctx)
+			updated, err := p.poll(ctx)
 			if p.onResponse != nil {
-				p.onResponse(err)
+				p.onResponse(updated, err)
 			}
 			if err == nil {
 				continue
@@ -93,9 +93,9 @@ func (p *WorkspaceConfigsPoller[K, T]) Run(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				case <-time.After(delay):
-					err = p.poll(ctx)
+					updated, err = p.poll(ctx)
 					if p.onResponse != nil {
-						p.onResponse(err)
+						p.onResponse(updated, err)
 					}
 					if err != nil {
 						p.log.Warnn("failed to poll workspace configs after delay",
@@ -117,25 +117,25 @@ func (p *WorkspaceConfigsPoller[K, T]) Run(ctx context.Context) {
 	}
 }
 
-func (p *WorkspaceConfigsPoller[K, T]) poll(ctx context.Context) error {
+func (p *WorkspaceConfigsPoller[K, T]) poll(ctx context.Context) (bool, error) {
 	p.log.Debugn("polling for workspace configs", logger.NewTimeField("updatedAt", p.updatedAt))
 
 	response := p.constructor()
 	err := p.getter(ctx, response, p.updatedAt)
 	if err != nil {
-		return fmt.Errorf("failed to get updated workspace configs: %w", err)
+		return false, fmt.Errorf("failed to get updated workspace configs: %w", err)
 	}
 
-	updatedAt, err := p.handler(response)
+	updatedAt, updated, err := p.handler(response)
 	if err != nil {
-		return fmt.Errorf("failed to handle workspace configs: %w", err)
+		return false, fmt.Errorf("failed to handle workspace configs: %w", err)
 	}
 
 	if !updatedAt.IsZero() {
 		p.updatedAt = updatedAt
 	}
 
-	return nil
+	return updated, nil
 }
 
 func (p *WorkspaceConfigsPoller[K, T]) nextBackOff() func() time.Duration {

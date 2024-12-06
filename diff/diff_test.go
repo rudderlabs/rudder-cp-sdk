@@ -30,8 +30,9 @@ func TestUpdateable(t *testing.T) {
 	// Update the cache with the first call response and make sure the workspaces are correct
 	var cache UpdateableList[string, *WorkspaceConfig] = &WorkspaceConfigs[string, *WorkspaceConfig]{}
 	updater := &Updater[string, *WorkspaceConfig]{}
-	updateAfter, err := updater.UpdateCache(response, cache)
+	updateAfter, updated, err := updater.UpdateCache(response, cache)
 	require.NoError(t, err)
+	require.True(t, updated)
 	require.Equal(t, time.Date(2021, 9, 1, 6, 6, 6, 0, time.UTC), updateAfter)
 	{
 		workspaces := getWorkspaces(cache)
@@ -59,8 +60,9 @@ func TestUpdateable(t *testing.T) {
 		require.Nil(t, workspaces["workspace2"])
 	}
 
-	updateAfter, err = updater.UpdateCache(response, cache)
+	updateAfter, updated, err = updater.UpdateCache(response, cache)
 	require.NoError(t, err)
+	require.False(t, updated)
 	require.Equal(t, time.Date(2021, 9, 1, 6, 6, 6, 0, time.UTC), updateAfter)
 	{
 		workspaces := getWorkspaces(cache)
@@ -88,8 +90,9 @@ func TestUpdateable(t *testing.T) {
 		require.Equal(t, goldenWorkspace3, workspaces["workspace3"])
 	}
 
-	updateAfter, err = updater.UpdateCache(response, cache)
+	updateAfter, updated, err = updater.UpdateCache(response, cache)
 	require.NoError(t, err)
+	require.True(t, updated)
 	require.Equal(t, time.Date(2021, 9, 1, 6, 6, 7, 0, time.UTC), updateAfter)
 	{
 		workspaces := getWorkspaces(cache)
@@ -116,8 +119,9 @@ func TestUpdateable(t *testing.T) {
 		require.Equal(t, goldenUpdatedWorkspace3, workspaces["workspace3"])
 	}
 
-	updateAfter, err = updater.UpdateCache(response, cache)
+	updateAfter, updated, err = updater.UpdateCache(response, cache)
 	require.NoError(t, err)
+	require.True(t, updated)
 	require.Equal(t, time.Date(2021, 9, 1, 6, 6, 8, 0, time.UTC), updateAfter)
 	{
 		workspaces := getWorkspaces(cache)
@@ -132,6 +136,8 @@ func TestUpdateable(t *testing.T) {
 type WorkspaceConfigs[K string, T *WorkspaceConfig] struct {
 	Workspaces map[string]*WorkspaceConfig `json:"workspaces"`
 }
+
+func (wcs *WorkspaceConfigs[K, T]) Length() int { return len(wcs.Workspaces) }
 
 func (wcs *WorkspaceConfigs[K, T]) List() iter.Seq2[K, T] {
 	return func(yield func(K, T) bool) {
