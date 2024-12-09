@@ -146,8 +146,12 @@ func (wcs *WorkspaceConfigs) Updateables() iter.Seq[UpdateableList[string, Updat
 
 func (wcs *WorkspaceConfigs) NonUpdateables() iter.Seq[NonUpdateablesList[string, any]] {
 	return func(yield func(NonUpdateablesList[string, any]) bool) {
-		yield(&wcs.SourceDefinitions)
-		yield(&wcs.DestinationDefinitions)
+		if !yield(&wcs.SourceDefinitions) {
+			return
+		}
+		if !yield(&wcs.DestinationDefinitions) {
+			return
+		}
 	}
 }
 
