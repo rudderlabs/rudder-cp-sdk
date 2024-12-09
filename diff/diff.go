@@ -32,8 +32,6 @@ type NonUpdateablesList[K comparable, T any] interface {
 	List() iter.Seq2[K, T]
 }
 
-type NonUpdateables interface{ Copy() }
-
 type Updater[K comparable] struct {
 	latestUpdatedAt time.Time
 }
