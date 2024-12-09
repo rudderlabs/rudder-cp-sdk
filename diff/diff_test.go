@@ -25,6 +25,12 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace2")
 		require.Equal(t, goldenWorkspace1, workspaces["workspace1"])
 		require.Equal(t, goldenWorkspace2, workspaces["workspace2"])
+		srcDefinitions := getSourceDefinitions(response)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(response)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	// Update the cache with the first call response and make sure the workspaces are correct
@@ -41,6 +47,12 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace2")
 		require.Equal(t, goldenWorkspace1, workspaces["workspace1"])
 		require.Equal(t, goldenWorkspace2, workspaces["workspace2"])
+		srcDefinitions := getSourceDefinitions(cache)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(cache)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	// in the second call we get the same two workspaces but with no updates so they'll both be null.
@@ -58,6 +70,12 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace2")
 		require.Nil(t, workspaces["workspace1"])
 		require.Nil(t, workspaces["workspace2"])
+		srcDefinitions := getSourceDefinitions(response)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(response)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	updateAfter, updated, err = updater.UpdateCache(response, cache)
@@ -71,6 +89,12 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace2")
 		require.Equal(t, goldenWorkspace1, workspaces["workspace1"])
 		require.Equal(t, goldenWorkspace2, workspaces["workspace2"])
+		srcDefinitions := getSourceDefinitions(cache)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(cache)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	// in the third call workspace1 is not updated, workspace2 is deleted, and we receive a new workspace3.
@@ -88,6 +112,12 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace3")
 		require.Nil(t, workspaces["workspace1"])
 		require.Equal(t, goldenWorkspace3, workspaces["workspace3"])
+		srcDefinitions := getSourceDefinitions(response)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(response)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	updateAfter, updated, err = updater.UpdateCache(response, cache)
@@ -117,6 +147,16 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace3")
 		require.Nil(t, workspaces["workspace1"])
 		require.Equal(t, goldenUpdatedWorkspace3, workspaces["workspace3"])
+		srcDefinitions := getSourceDefinitions(response)
+		require.Len(t, srcDefinitions, 2)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		require.Contains(t, srcDefinitions, "singer-klaviyo")
+		require.Equal(t, &SourceDefinition{Name: "Klaviyo"}, srcDefinitions["singer-klaviyo"])
+		dstDefinitions := getDestinationDefinitions(response)
+		require.Len(t, dstDefinitions, 1)
+		require.Contains(t, dstDefinitions, "LINKEDIN_ADS")
+		require.Equal(t, &DestinationDefinition{Name: "LinkedIn Ads"}, dstDefinitions["LINKEDIN_ADS"])
 	}
 
 	updateAfter, updated, err = updater.UpdateCache(response, cache)
@@ -130,6 +170,16 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace3")
 		require.Equal(t, goldenWorkspace1, workspaces["workspace1"])
 		require.Equal(t, goldenUpdatedWorkspace3, workspaces["workspace3"])
+		srcDefinitions := getSourceDefinitions(cache)
+		require.Len(t, srcDefinitions, 2)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		require.Contains(t, srcDefinitions, "singer-klaviyo")
+		require.Equal(t, &SourceDefinition{Name: "Klaviyo"}, srcDefinitions["singer-klaviyo"])
+		dstDefinitions := getDestinationDefinitions(cache)
+		require.Len(t, dstDefinitions, 1)
+		require.Contains(t, dstDefinitions, "LINKEDIN_ADS")
+		require.Equal(t, &DestinationDefinition{Name: "LinkedIn Ads"}, dstDefinitions["LINKEDIN_ADS"])
 	}
 }
 
@@ -279,6 +329,14 @@ func (dd *DestinationDefinitions) List() iter.Seq2[string, any] {
 
 func getWorkspaces(v UpdateableObject[string]) map[string]*WorkspaceConfig {
 	return v.(*WorkspaceConfigs).Workspaces
+}
+
+func getSourceDefinitions(v UpdateableObject[string]) map[string]*SourceDefinition {
+	return v.(*WorkspaceConfigs).SourceDefinitions
+}
+
+func getDestinationDefinitions(v UpdateableObject[string]) map[string]*DestinationDefinition {
+	return v.(*WorkspaceConfigs).DestinationDefinitions
 }
 
 func TestDiff(t *testing.T) {

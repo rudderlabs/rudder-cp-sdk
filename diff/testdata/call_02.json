@@ -2,5 +2,10 @@
 	"workspaces": {
 		"workspace1": null,
 		"workspace2": null
+	},
+	"sourceDefinitions": {
+        "close_crm": {
+            "name": "Close CRM"
+        }
 	}
 }
