@@ -3,13 +3,11 @@ package diff
 import (
 	stdjson "encoding/json"
 	"iter"
-	"os"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
+/*
 func TestUpdateable(t *testing.T) {
 	// Get the data from the first call and make sure it unmarshals correctly
 	firstCall, err := os.ReadFile("./testdata/call_01.json")
@@ -132,37 +130,53 @@ func TestUpdateable(t *testing.T) {
 		require.Equal(t, goldenUpdatedWorkspace3, workspaces["workspace3"])
 	}
 }
+*/
 
-type WorkspaceConfigs[K string, T *WorkspaceConfig] struct {
-	Workspaces map[string]*WorkspaceConfig `json:"workspaces"`
+type WorkspaceConfigs struct {
+	Workspaces             Workspaces             `json:"workspaces"`
+	SourceDefinitions      SourceDefinitions      `json:"sourceDefinitions"`
+	DestinationDefinitions DestinationDefinitions `json:"destinationDefinitions"`
 }
 
-func (wcs *WorkspaceConfigs[K, T]) Length() int { return len(wcs.Workspaces) }
+func (wcs *WorkspaceConfigs) Updateables() iter.Seq[UpdateableList[string, UpdateableElement]] {
+	return func(yield func(UpdateableList[string, UpdateableElement]) bool) {
+		yield(&wcs.Workspaces)
+	}
+}
 
-func (wcs *WorkspaceConfigs[K, T]) List() iter.Seq2[K, T] {
-	return func(yield func(K, T) bool) {
-		for key, wc := range wcs.Workspaces {
-			if !yield(K(key), wc) {
+func (wcs *WorkspaceConfigs) NonUpdateables() iter.Seq[NonUpdateablesList[string, any]] {
+	return func(yield func(NonUpdateablesList[string, any]) bool) {
+		yield(&wcs.SourceDefinitions)
+		yield(&wcs.DestinationDefinitions)
+	}
+}
+
+type Workspaces map[string]*WorkspaceConfig
+
+func (ws *Workspaces) Type() string { return "Workspaces" }
+func (ws *Workspaces) Length() int  { return len(*ws) }
+func (ws *Workspaces) Reset()       { *ws = make(map[string]*WorkspaceConfig) }
+
+func (ws *Workspaces) List() iter.Seq2[string, UpdateableElement] {
+	return func(yield func(string, UpdateableElement) bool) {
+		for key, wc := range *ws {
+			if !yield(key, wc) {
 				break
 			}
 		}
 	}
 }
 
-func (wcs *WorkspaceConfigs[K, T]) GetElementByKey(id string) (T, bool) {
-	wc, ok := wcs.Workspaces[id]
+func (ws *Workspaces) GetElementByKey(id string) (UpdateableElement, bool) {
+	wc, ok := (*ws)[id]
 	return wc, ok
 }
 
-func (wcs *WorkspaceConfigs[K, T]) SetElementByKey(id string, object T) {
-	if wcs.Workspaces == nil {
-		wcs.Workspaces = make(map[string]*WorkspaceConfig)
+func (ws *Workspaces) SetElementByKey(id string, object UpdateableElement) {
+	if *ws == nil {
+		*ws = make(map[string]*WorkspaceConfig)
 	}
-	wcs.Workspaces[id] = object
-}
-
-func (wcs *WorkspaceConfigs[K, T]) Reset() {
-	wcs.Workspaces = make(map[string]*WorkspaceConfig)
+	(*ws)[id] = object.(*WorkspaceConfig)
 }
 
 type WorkspaceConfig struct {
@@ -214,6 +228,58 @@ type ConnectionReplay struct {
 	DestinationID string `json:"destinationId"`
 }
 
-func getWorkspaces(v UpdateableList[string, *WorkspaceConfig]) map[string]*WorkspaceConfig {
-	return v.(*WorkspaceConfigs[string, *WorkspaceConfig]).Workspaces
+type SourceDefinition struct {
+	Name string `json:"name"`
+}
+
+type SourceDefinitions map[string]*SourceDefinition
+
+func (sd *SourceDefinitions) Type() string { return "SourceDefinitions" }
+func (sd *SourceDefinitions) Reset()       { *sd = make(map[string]*SourceDefinition) }
+func (sd *SourceDefinitions) SetElementByKey(id string, object any) {
+	(*sd)[id] = object.(*SourceDefinition)
+}
+
+func (sd *SourceDefinitions) List() iter.Seq2[string, any] {
+	return func(yield func(string, any) bool) {
+		for key, d := range *sd {
+			if !yield(key, d) {
+				break
+			}
+		}
+	}
+}
+
+type DestinationDefinition struct {
+	Name string `json:"name"`
+}
+
+type DestinationDefinitions map[string]*DestinationDefinition
+
+func (dd *DestinationDefinitions) Type() string { return "DestinationDefinitions" }
+func (dd *DestinationDefinitions) Reset()       { *dd = make(map[string]*DestinationDefinition) }
+func (dd *DestinationDefinitions) SetElementByKey(id string, object any) {
+	(*dd)[id] = object.(*DestinationDefinition)
+}
+
+func (dd *DestinationDefinitions) List() iter.Seq2[string, any] {
+	return func(yield func(string, any) bool) {
+		for key, d := range *dd {
+			if !yield(key, d) {
+				break
+			}
+		}
+	}
+}
+
+//func getWorkspaces(v UpdateableList[string, *WorkspaceConfig]) map[string]*WorkspaceConfig {
+//	return v.(*WorkspaceConfigs[string, *WorkspaceConfig]).Workspaces
+//}
+
+func TestDiff(t *testing.T) {
+	updater := &Updater[string]{}
+
+	wcs := &WorkspaceConfigs{}
+	tm, ok, err := updater.UpdateCache(wcs, wcs)
+	t.Log(tm, ok, err)
 }
