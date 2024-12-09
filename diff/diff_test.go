@@ -3,17 +3,19 @@ package diff
 import (
 	stdjson "encoding/json"
 	"iter"
+	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
-/*
 func TestUpdateable(t *testing.T) {
 	// Get the data from the first call and make sure it unmarshals correctly
 	firstCall, err := os.ReadFile("./testdata/call_01.json")
 	require.NoError(t, err)
 
-	var response UpdateableList[string, *WorkspaceConfig] = &WorkspaceConfigs[string, *WorkspaceConfig]{}
+	var response UpdateableObject[string] = &WorkspaceConfigs{}
 	err = stdjson.Unmarshal(firstCall, &response)
 	require.NoError(t, err)
 	{
@@ -26,8 +28,8 @@ func TestUpdateable(t *testing.T) {
 	}
 
 	// Update the cache with the first call response and make sure the workspaces are correct
-	var cache UpdateableList[string, *WorkspaceConfig] = &WorkspaceConfigs[string, *WorkspaceConfig]{}
-	updater := &Updater[string, *WorkspaceConfig]{}
+	var cache UpdateableObject[string] = &WorkspaceConfigs{}
+	updater := &Updater[string]{}
 	updateAfter, updated, err := updater.UpdateCache(response, cache)
 	require.NoError(t, err)
 	require.True(t, updated)
@@ -46,7 +48,7 @@ func TestUpdateable(t *testing.T) {
 	secondCall, err := os.ReadFile("./testdata/call_02.json")
 	require.NoError(t, err)
 
-	response = &WorkspaceConfigs[string, *WorkspaceConfig]{}
+	response = &WorkspaceConfigs{}
 	err = stdjson.Unmarshal(secondCall, &response)
 	require.NoError(t, err)
 	{
@@ -75,7 +77,7 @@ func TestUpdateable(t *testing.T) {
 	thirdCall, err := os.ReadFile("./testdata/call_03.json")
 	require.NoError(t, err)
 
-	response = &WorkspaceConfigs[string, *WorkspaceConfig]{}
+	response = &WorkspaceConfigs{}
 	err = stdjson.Unmarshal(thirdCall, &response)
 	require.NoError(t, err)
 	{
@@ -105,7 +107,7 @@ func TestUpdateable(t *testing.T) {
 	fourthCall, err := os.ReadFile("./testdata/call_04.json")
 	require.NoError(t, err)
 
-	response = &WorkspaceConfigs[string, *WorkspaceConfig]{}
+	response = &WorkspaceConfigs{}
 	err = stdjson.Unmarshal(fourthCall, &response)
 	require.NoError(t, err)
 	{
@@ -130,7 +132,6 @@ func TestUpdateable(t *testing.T) {
 		require.Equal(t, goldenUpdatedWorkspace3, workspaces["workspace3"])
 	}
 }
-*/
 
 type WorkspaceConfigs struct {
 	Workspaces             Workspaces             `json:"workspaces"`
@@ -276,9 +277,9 @@ func (dd *DestinationDefinitions) List() iter.Seq2[string, any] {
 	}
 }
 
-//func getWorkspaces(v UpdateableList[string, *WorkspaceConfig]) map[string]*WorkspaceConfig {
-//	return v.(*WorkspaceConfigs[string, *WorkspaceConfig]).Workspaces
-//}
+func getWorkspaces(v UpdateableObject[string]) map[string]*WorkspaceConfig {
+	return v.(*WorkspaceConfigs).Workspaces
+}
 
 func TestDiff(t *testing.T) {
 	updater := &Updater[string]{}
