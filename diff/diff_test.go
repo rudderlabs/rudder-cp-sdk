@@ -15,7 +15,7 @@ func TestUpdateable(t *testing.T) {
 	firstCall, err := os.ReadFile("./testdata/call_01.json")
 	require.NoError(t, err)
 
-	var response UpdateableList[string, *WorkspaceConfig] = &WorkspaceConfigs[string, *WorkspaceConfig]{}
+	var response UpdateableObject[string] = &WorkspaceConfigs{}
 	err = stdjson.Unmarshal(firstCall, &response)
 	require.NoError(t, err)
 	{
@@ -25,11 +25,17 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace2")
 		require.Equal(t, goldenWorkspace1, workspaces["workspace1"])
 		require.Equal(t, goldenWorkspace2, workspaces["workspace2"])
+		srcDefinitions := getSourceDefinitions(response)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(response)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	// Update the cache with the first call response and make sure the workspaces are correct
-	var cache UpdateableList[string, *WorkspaceConfig] = &WorkspaceConfigs[string, *WorkspaceConfig]{}
-	updater := &Updater[string, *WorkspaceConfig]{}
+	var cache UpdateableObject[string] = &WorkspaceConfigs{}
+	updater := &Updater[string]{}
 	updateAfter, updated, err := updater.UpdateCache(response, cache)
 	require.NoError(t, err)
 	require.True(t, updated)
@@ -41,6 +47,12 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace2")
 		require.Equal(t, goldenWorkspace1, workspaces["workspace1"])
 		require.Equal(t, goldenWorkspace2, workspaces["workspace2"])
+		srcDefinitions := getSourceDefinitions(cache)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(cache)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	// in the second call we get the same two workspaces but with no updates so they'll both be null.
@@ -48,7 +60,7 @@ func TestUpdateable(t *testing.T) {
 	secondCall, err := os.ReadFile("./testdata/call_02.json")
 	require.NoError(t, err)
 
-	response = &WorkspaceConfigs[string, *WorkspaceConfig]{}
+	response = &WorkspaceConfigs{}
 	err = stdjson.Unmarshal(secondCall, &response)
 	require.NoError(t, err)
 	{
@@ -58,6 +70,12 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace2")
 		require.Nil(t, workspaces["workspace1"])
 		require.Nil(t, workspaces["workspace2"])
+		srcDefinitions := getSourceDefinitions(response)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(response)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	updateAfter, updated, err = updater.UpdateCache(response, cache)
@@ -71,13 +89,19 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace2")
 		require.Equal(t, goldenWorkspace1, workspaces["workspace1"])
 		require.Equal(t, goldenWorkspace2, workspaces["workspace2"])
+		srcDefinitions := getSourceDefinitions(cache)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(cache)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	// in the third call workspace1 is not updated, workspace2 is deleted, and we receive a new workspace3.
 	thirdCall, err := os.ReadFile("./testdata/call_03.json")
 	require.NoError(t, err)
 
-	response = &WorkspaceConfigs[string, *WorkspaceConfig]{}
+	response = &WorkspaceConfigs{}
 	err = stdjson.Unmarshal(thirdCall, &response)
 	require.NoError(t, err)
 	{
@@ -88,6 +112,12 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace3")
 		require.Nil(t, workspaces["workspace1"])
 		require.Equal(t, goldenWorkspace3, workspaces["workspace3"])
+		srcDefinitions := getSourceDefinitions(response)
+		require.Len(t, srcDefinitions, 1)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		dstDefinitions := getDestinationDefinitions(response)
+		require.Len(t, dstDefinitions, 0)
 	}
 
 	updateAfter, updated, err = updater.UpdateCache(response, cache)
@@ -107,7 +137,7 @@ func TestUpdateable(t *testing.T) {
 	fourthCall, err := os.ReadFile("./testdata/call_04.json")
 	require.NoError(t, err)
 
-	response = &WorkspaceConfigs[string, *WorkspaceConfig]{}
+	response = &WorkspaceConfigs{}
 	err = stdjson.Unmarshal(fourthCall, &response)
 	require.NoError(t, err)
 	{
@@ -117,6 +147,16 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace3")
 		require.Nil(t, workspaces["workspace1"])
 		require.Equal(t, goldenUpdatedWorkspace3, workspaces["workspace3"])
+		srcDefinitions := getSourceDefinitions(response)
+		require.Len(t, srcDefinitions, 2)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		require.Contains(t, srcDefinitions, "singer-klaviyo")
+		require.Equal(t, &SourceDefinition{Name: "Klaviyo"}, srcDefinitions["singer-klaviyo"])
+		dstDefinitions := getDestinationDefinitions(response)
+		require.Len(t, dstDefinitions, 1)
+		require.Contains(t, dstDefinitions, "LINKEDIN_ADS")
+		require.Equal(t, &DestinationDefinition{Name: "LinkedIn Ads"}, dstDefinitions["LINKEDIN_ADS"])
 	}
 
 	updateAfter, updated, err = updater.UpdateCache(response, cache)
@@ -130,39 +170,68 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, workspaces, "workspace3")
 		require.Equal(t, goldenWorkspace1, workspaces["workspace1"])
 		require.Equal(t, goldenUpdatedWorkspace3, workspaces["workspace3"])
+		srcDefinitions := getSourceDefinitions(cache)
+		require.Len(t, srcDefinitions, 2)
+		require.Contains(t, srcDefinitions, "close_crm")
+		require.Equal(t, &SourceDefinition{Name: "Close CRM"}, srcDefinitions["close_crm"])
+		require.Contains(t, srcDefinitions, "singer-klaviyo")
+		require.Equal(t, &SourceDefinition{Name: "Klaviyo"}, srcDefinitions["singer-klaviyo"])
+		dstDefinitions := getDestinationDefinitions(cache)
+		require.Len(t, dstDefinitions, 1)
+		require.Contains(t, dstDefinitions, "LINKEDIN_ADS")
+		require.Equal(t, &DestinationDefinition{Name: "LinkedIn Ads"}, dstDefinitions["LINKEDIN_ADS"])
 	}
 }
 
-type WorkspaceConfigs[K string, T *WorkspaceConfig] struct {
-	Workspaces map[string]*WorkspaceConfig `json:"workspaces"`
+type WorkspaceConfigs struct {
+	Workspaces             Workspaces             `json:"workspaces"`
+	SourceDefinitions      SourceDefinitions      `json:"sourceDefinitions"`
+	DestinationDefinitions DestinationDefinitions `json:"destinationDefinitions"`
 }
 
-func (wcs *WorkspaceConfigs[K, T]) Length() int { return len(wcs.Workspaces) }
+func (wcs *WorkspaceConfigs) Updateables() iter.Seq[UpdateableList[string, UpdateableElement]] {
+	return func(yield func(UpdateableList[string, UpdateableElement]) bool) {
+		yield(&wcs.Workspaces)
+	}
+}
 
-func (wcs *WorkspaceConfigs[K, T]) List() iter.Seq2[K, T] {
-	return func(yield func(K, T) bool) {
-		for key, wc := range wcs.Workspaces {
-			if !yield(K(key), wc) {
+func (wcs *WorkspaceConfigs) NonUpdateables() iter.Seq[NonUpdateablesList[string, any]] {
+	return func(yield func(NonUpdateablesList[string, any]) bool) {
+		if !yield(&wcs.SourceDefinitions) {
+			return
+		}
+		if !yield(&wcs.DestinationDefinitions) {
+			return
+		}
+	}
+}
+
+type Workspaces map[string]*WorkspaceConfig
+
+func (ws *Workspaces) Type() string { return "Workspaces" }
+func (ws *Workspaces) Length() int  { return len(*ws) }
+func (ws *Workspaces) Reset()       { *ws = make(map[string]*WorkspaceConfig) }
+
+func (ws *Workspaces) List() iter.Seq2[string, UpdateableElement] {
+	return func(yield func(string, UpdateableElement) bool) {
+		for key, wc := range *ws {
+			if !yield(key, wc) {
 				break
 			}
 		}
 	}
 }
 
-func (wcs *WorkspaceConfigs[K, T]) GetElementByKey(id string) (T, bool) {
-	wc, ok := wcs.Workspaces[id]
+func (ws *Workspaces) GetElementByKey(id string) (UpdateableElement, bool) {
+	wc, ok := (*ws)[id]
 	return wc, ok
 }
 
-func (wcs *WorkspaceConfigs[K, T]) SetElementByKey(id string, object T) {
-	if wcs.Workspaces == nil {
-		wcs.Workspaces = make(map[string]*WorkspaceConfig)
+func (ws *Workspaces) SetElementByKey(id string, object UpdateableElement) {
+	if *ws == nil {
+		*ws = make(map[string]*WorkspaceConfig)
 	}
-	wcs.Workspaces[id] = object
-}
-
-func (wcs *WorkspaceConfigs[K, T]) Reset() {
-	wcs.Workspaces = make(map[string]*WorkspaceConfig)
+	(*ws)[id] = object.(*WorkspaceConfig)
 }
 
 type WorkspaceConfig struct {
@@ -214,6 +283,58 @@ type ConnectionReplay struct {
 	DestinationID string `json:"destinationId"`
 }
 
-func getWorkspaces(v UpdateableList[string, *WorkspaceConfig]) map[string]*WorkspaceConfig {
-	return v.(*WorkspaceConfigs[string, *WorkspaceConfig]).Workspaces
+type SourceDefinition struct {
+	Name string `json:"name"`
+}
+
+type SourceDefinitions map[string]*SourceDefinition
+
+func (sd *SourceDefinitions) Type() string { return "SourceDefinitions" }
+func (sd *SourceDefinitions) Reset()       { *sd = make(map[string]*SourceDefinition) }
+func (sd *SourceDefinitions) SetElementByKey(id string, object any) {
+	(*sd)[id] = object.(*SourceDefinition)
+}
+
+func (sd *SourceDefinitions) List() iter.Seq2[string, any] {
+	return func(yield func(string, any) bool) {
+		for key, d := range *sd {
+			if !yield(key, d) {
+				break
+			}
+		}
+	}
+}
+
+type DestinationDefinition struct {
+	Name string `json:"name"`
+}
+
+type DestinationDefinitions map[string]*DestinationDefinition
+
+func (dd *DestinationDefinitions) Type() string { return "DestinationDefinitions" }
+func (dd *DestinationDefinitions) Reset()       { *dd = make(map[string]*DestinationDefinition) }
+func (dd *DestinationDefinitions) SetElementByKey(id string, object any) {
+	(*dd)[id] = object.(*DestinationDefinition)
+}
+
+func (dd *DestinationDefinitions) List() iter.Seq2[string, any] {
+	return func(yield func(string, any) bool) {
+		for key, d := range *dd {
+			if !yield(key, d) {
+				break
+			}
+		}
+	}
+}
+
+func getWorkspaces(v UpdateableObject[string]) map[string]*WorkspaceConfig {
+	return v.(*WorkspaceConfigs).Workspaces
+}
+
+func getSourceDefinitions(v UpdateableObject[string]) map[string]*SourceDefinition {
+	return v.(*WorkspaceConfigs).SourceDefinitions
+}
+
+func getDestinationDefinitions(v UpdateableObject[string]) map[string]*DestinationDefinition {
+	return v.(*WorkspaceConfigs).DestinationDefinitions
 }

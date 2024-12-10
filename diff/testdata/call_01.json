@@ -54,5 +54,10 @@
 			},
 			"updatedAt": "2021-09-01T06:06:06Z"
 		}
+	},
+	"sourceDefinitions": {
+        "close_crm": {
+            "name": "Close CRM"
+        }
 	}
 }

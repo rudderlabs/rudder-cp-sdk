@@ -12,15 +12,15 @@ import (
 	obskit "github.com/rudderlabs/rudder-observability-kit/go/labels"
 )
 
-type WorkspaceConfigsGetter[K comparable, T diff.UpdateableElement] func(ctx context.Context, l diff.UpdateableList[K, T], updatedAfter time.Time) error
+type WorkspaceConfigsGetter[K comparable] func(ctx context.Context, l diff.UpdateableObject[K], updatedAfter time.Time) error
 
-type WorkspaceConfigsHandler[K comparable, T diff.UpdateableElement] func(list diff.UpdateableList[K, T]) (time.Time, bool, error)
+type WorkspaceConfigsHandler[K comparable] func(obj diff.UpdateableObject[K]) (time.Time, bool, error)
 
 // WorkspaceConfigsPoller periodically polls for new workspace configs and runs a handler on them.
-type WorkspaceConfigsPoller[K comparable, T diff.UpdateableElement] struct {
-	getter      WorkspaceConfigsGetter[K, T]
-	handler     WorkspaceConfigsHandler[K, T]
-	constructor func() diff.UpdateableList[K, T]
+type WorkspaceConfigsPoller[K comparable] struct {
+	getter      WorkspaceConfigsGetter[K]
+	handler     WorkspaceConfigsHandler[K]
+	constructor func() diff.UpdateableObject[K]
 	interval    time.Duration
 	updatedAt   time.Time
 	onResponse  func(bool, error)
@@ -32,13 +32,13 @@ type WorkspaceConfigsPoller[K comparable, T diff.UpdateableElement] struct {
 	log logger.Logger
 }
 
-func NewWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
-	getter WorkspaceConfigsGetter[K, T],
-	handler WorkspaceConfigsHandler[K, T],
-	constructor func() diff.UpdateableList[K, T],
-	opts ...Option[K, T],
-) (*WorkspaceConfigsPoller[K, T], error) {
-	p := &WorkspaceConfigsPoller[K, T]{
+func NewWorkspaceConfigsPoller[K comparable](
+	getter WorkspaceConfigsGetter[K],
+	handler WorkspaceConfigsHandler[K],
+	constructor func() diff.UpdateableObject[K],
+	opts ...Option[K],
+) (*WorkspaceConfigsPoller[K], error) {
+	p := &WorkspaceConfigsPoller[K]{
 		getter:      getter,
 		handler:     handler,
 		constructor: constructor,
@@ -70,7 +70,7 @@ func NewWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
 
 // Run starts polling for new workspace configs every interval.
 // It will stop polling when the context is cancelled.
-func (p *WorkspaceConfigsPoller[K, T]) Run(ctx context.Context) {
+func (p *WorkspaceConfigsPoller[K]) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -117,7 +117,7 @@ func (p *WorkspaceConfigsPoller[K, T]) Run(ctx context.Context) {
 	}
 }
 
-func (p *WorkspaceConfigsPoller[K, T]) poll(ctx context.Context) (bool, error) {
+func (p *WorkspaceConfigsPoller[K]) poll(ctx context.Context) (bool, error) {
 	p.log.Debugn("polling for workspace configs", logger.NewTimeField("updatedAt", p.updatedAt))
 
 	response := p.constructor()
@@ -138,7 +138,7 @@ func (p *WorkspaceConfigsPoller[K, T]) poll(ctx context.Context) (bool, error) {
 	return updated, nil
 }
 
-func (p *WorkspaceConfigsPoller[K, T]) nextBackOff() func() time.Duration {
+func (p *WorkspaceConfigsPoller[K]) nextBackOff() func() time.Duration {
 	return backoff.NewExponentialBackOff(
 		backoff.WithInitialInterval(p.backoff.initialInterval),
 		backoff.WithMaxInterval(p.backoff.maxInterval),

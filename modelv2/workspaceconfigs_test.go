@@ -6,12 +6,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/rudderlabs/rudder-cp-sdk/diff"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 )
 
 func TestWorkspaceConfigsUpdatedAt(t *testing.T) {
-	wcs := &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{
-		Workspaces: map[string]*modelv2.WorkspaceConfig{
+	wcs := &modelv2.WorkspaceConfigs{
+		Workspaces: modelv2.Workspaces{
 			"ws-1": {
 				UpdatedAt: time.Date(2021, 1, 2, 0, 0, 0, 0, time.UTC),
 			},
@@ -22,10 +23,12 @@ func TestWorkspaceConfigsUpdatedAt(t *testing.T) {
 		},
 	}
 
-	m := make(map[string]*modelv2.WorkspaceConfig, len(wcs.Workspaces))
-	for id, wc := range wcs.List() {
-		require.Equal(t, wcs.Workspaces[id], wc)
-		m[id] = wc
+	m := make(modelv2.Workspaces, len(wcs.Workspaces))
+	for uo := range wcs.Updateables() {
+		for id, wc := range uo.List() {
+			require.Equal(t, wcs.Workspaces[id], wc)
+			m[id] = wc.(*modelv2.WorkspaceConfig)
+		}
 	}
 
 	require.Len(t, m, 3)
@@ -35,22 +38,23 @@ func TestWorkspaceConfigsUpdatedAt(t *testing.T) {
 	require.Equal(t, time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC), m["ws-2"].GetUpdatedAt())
 	require.True(t, m["ws-3"].IsNil())
 
-	ws, ok := wcs.GetElementByKey("ws-1")
+	var updateableList diff.UpdateableList[string, diff.UpdateableElement] = &wcs.Workspaces
+	ws, ok := updateableList.GetElementByKey("ws-1")
 	require.True(t, ok)
 	require.Equal(t, wcs.Workspaces["ws-1"], ws)
 
-	ws, ok = wcs.GetElementByKey("ws-2")
+	ws, ok = updateableList.GetElementByKey("ws-2")
 	require.True(t, ok)
 	require.Equal(t, wcs.Workspaces["ws-2"], ws)
 
-	ws, ok = wcs.GetElementByKey("ws-3")
+	ws, ok = updateableList.GetElementByKey("ws-3")
 	require.True(t, ok)
 	require.Nil(t, ws)
 
-	wcs.SetElementByKey("ws-3", &modelv2.WorkspaceConfig{
+	updateableList.SetElementByKey("ws-3", &modelv2.WorkspaceConfig{
 		UpdatedAt: time.Date(2021, 1, 3, 0, 0, 0, 0, time.UTC),
 	})
-	ws, ok = wcs.GetElementByKey("ws-3")
+	ws, ok = updateableList.GetElementByKey("ws-3")
 	require.True(t, ok)
 	require.Equal(t, wcs.Workspaces["ws-3"], ws)
 	require.Equal(t, time.Date(2021, 1, 3, 0, 0, 0, 0, time.UTC), wcs.Workspaces["ws-3"].GetUpdatedAt())
