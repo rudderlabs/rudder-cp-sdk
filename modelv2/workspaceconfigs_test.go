@@ -61,5 +61,34 @@ func TestWorkspaceConfigsUpdatedAt(t *testing.T) {
 }
 
 func TestNonUpdateables(t *testing.T) {
-	t.Skip("TODO")
+	wcs := &modelv2.WorkspaceConfigs{
+		Workspaces: modelv2.Workspaces{
+			"ws-1": {
+				UpdatedAt: time.Date(2021, 1, 2, 0, 0, 0, 0, time.UTC),
+			},
+			"ws-2": {
+				UpdatedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+			"ws-3": nil,
+		},
+		SourceDefinitions: modelv2.SourceDefinitions{
+			"source-1": &modelv2.SourceDefinition{
+				Name: "Source Definition 1",
+			},
+		},
+		DestinationDefinitions: modelv2.DestinationDefinitions{
+			"destination-1": &modelv2.DestinationDefinition{
+				Name: "Destination Definition 1",
+			},
+		},
+	}
+
+	nonUpdateables := make([]diff.NonUpdateablesList[string, any], 0, 2)
+	for nu := range wcs.NonUpdateables() {
+		nonUpdateables = append(nonUpdateables, nu)
+	}
+
+	require.Len(t, nonUpdateables, 2)
+	require.Equal(t, &wcs.SourceDefinitions, nonUpdateables[0])
+	require.Equal(t, &wcs.DestinationDefinitions, nonUpdateables[1])
 }
