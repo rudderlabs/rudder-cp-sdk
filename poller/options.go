@@ -24,6 +24,14 @@ func WithPollingBackoffMaxInterval[K comparable](d time.Duration) Option[K] {
 	return func(p *WorkspaceConfigsPoller[K]) { p.backoff.maxInterval = d }
 }
 
+func WithPollingMaxElapsedTime[K comparable](d time.Duration) Option[K] {
+	return func(p *WorkspaceConfigsPoller[K]) { p.backoff.maxElapsedTime = d }
+}
+
+func WithPollingMaxRetries[K comparable](n uint64) Option[K] {
+	return func(p *WorkspaceConfigsPoller[K]) { p.backoff.maxRetries = n }
+}
+
 func WithPollingBackoffMultiplier[K comparable](m float64) Option[K] {
 	return func(p *WorkspaceConfigsPoller[K]) { p.backoff.multiplier = m }
 }

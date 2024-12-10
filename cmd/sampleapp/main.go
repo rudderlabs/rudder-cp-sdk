@@ -78,6 +78,8 @@ func setupWorkspaceConfigsPoller[K comparable](
 		poller.WithPollingInterval[K](1*time.Second),
 		poller.WithPollingBackoffInitialInterval[K](1*time.Second),
 		poller.WithPollingBackoffMaxInterval[K](1*time.Minute),
+		poller.WithPollingMaxElapsedTime[K](5*time.Minute),
+		poller.WithPollingMaxRetries[K](15),
 		poller.WithPollingBackoffMultiplier[K](1.5),
 		poller.WithOnResponse[K](func(updated bool, err error) {
 			if err != nil {

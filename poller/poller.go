@@ -27,6 +27,8 @@ type WorkspaceConfigsPoller[K comparable] struct {
 	backoff     struct {
 		initialInterval time.Duration
 		maxInterval     time.Duration
+		maxElapsedTime  time.Duration
+		maxRetries      uint64
 		multiplier      float64
 	}
 	log logger.Logger
@@ -47,6 +49,8 @@ func NewWorkspaceConfigsPoller[K comparable](
 	}
 	p.backoff.initialInterval = 1 * time.Second
 	p.backoff.maxInterval = 1 * time.Minute
+	p.backoff.maxElapsedTime = 5 * time.Minute
+	p.backoff.maxRetries = 15
 	p.backoff.multiplier = 1.5
 
 	for _, opt := range opts {
@@ -148,9 +152,10 @@ func (p *WorkspaceConfigsPoller[K]) poll(ctx context.Context) (bool, error) {
 }
 
 func (p *WorkspaceConfigsPoller[K]) nextBackOff() func() time.Duration {
-	return backoff.NewExponentialBackOff(
+	return backoff.WithMaxRetries(backoff.NewExponentialBackOff(
 		backoff.WithInitialInterval(p.backoff.initialInterval),
 		backoff.WithMaxInterval(p.backoff.maxInterval),
+		backoff.WithMaxElapsedTime(p.backoff.maxElapsedTime),
 		backoff.WithMultiplier(p.backoff.multiplier),
-	).NextBackOff
+	), p.backoff.maxRetries).NextBackOff
 }
