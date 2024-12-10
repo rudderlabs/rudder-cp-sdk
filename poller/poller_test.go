@@ -16,30 +16,30 @@ import (
 )
 
 func TestPollerNew(t *testing.T) {
-	getter := func(ctx context.Context, l diff.UpdateableList[string, diff.UpdateableElement], updatedAfter time.Time) error {
+	getter := func(_ context.Context, _ diff.UpdateableObject[string], _ time.Time) error {
 		return nil
 	}
-	handler := func(list diff.UpdateableList[string, diff.UpdateableElement]) (time.Time, bool, error) {
+	handler := func(_ diff.UpdateableObject[string]) (time.Time, bool, error) {
 		return time.Time{}, false, nil
 	}
-	constructor := func() diff.UpdateableList[string, diff.UpdateableElement] {
+	constructor := func() diff.UpdateableObject[string] {
 		return nil
 	}
 
 	t.Run("should return error if getter is nil", func(t *testing.T) {
-		p, err := NewWorkspaceConfigsPoller[string, diff.UpdateableElement](nil, handler, constructor)
+		p, err := NewWorkspaceConfigsPoller[string](nil, handler, constructor)
 		require.Nil(t, p)
 		require.Error(t, err)
 	})
 
 	t.Run("should return error if handler is nil", func(t *testing.T) {
-		p, err := NewWorkspaceConfigsPoller[string, diff.UpdateableElement](getter, nil, constructor)
+		p, err := NewWorkspaceConfigsPoller[string](getter, nil, constructor)
 		require.Nil(t, p)
 		require.Error(t, err)
 	})
 
 	t.Run("should return error if constructor is nil", func(t *testing.T) {
-		p, err := NewWorkspaceConfigsPoller[string, diff.UpdateableElement](getter, handler, nil)
+		p, err := NewWorkspaceConfigsPoller[string](getter, handler, nil)
 		require.Nil(t, p)
 		require.Error(t, err)
 	})
@@ -70,17 +70,17 @@ func TestPoller(t *testing.T) {
 		expectedResponseIndex := 0
 
 		getLatestUpdatedAt := getLatestUpdatedAt()
-		runTestPoller(t, ctx, client, func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
+		runTestPoller(t, ctx, client, func(obj diff.UpdateableObject[string]) (time.Time, bool, error) {
 			defer wg.Done()
 
-			require.Equalf(t, mockedResponses[expectedResponseIndex], list, "Response index: %d", expectedResponseIndex)
+			require.Equalf(t, mockedResponses[expectedResponseIndex], obj, "Response index: %d", expectedResponseIndex)
 
 			expectedResponseIndex++
 			if expectedResponseIndex == len(mockedResponses) {
 				cancel()
 			}
 
-			return getLatestUpdatedAt(list), true, nil
+			return getLatestUpdatedAt(obj), true, nil
 		})
 
 		wg.Wait()
@@ -113,17 +113,17 @@ func TestPoller(t *testing.T) {
 		expectedResponseIndex := 0
 
 		getLatestUpdatedAt := getLatestUpdatedAt()
-		runTestPoller(t, ctx, client, func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
+		runTestPoller(t, ctx, client, func(obj diff.UpdateableObject[string]) (time.Time, bool, error) {
 			defer wg.Done()
 
-			require.Equalf(t, mockedResponses[expectedResponseIndex], list, "Response index: %d", expectedResponseIndex)
+			require.Equalf(t, mockedResponses[expectedResponseIndex], obj, "Response index: %d", expectedResponseIndex)
 
 			expectedResponseIndex++
 			if expectedResponseIndex == len(mockedResponses) {
 				cancel()
 			}
 
-			return getLatestUpdatedAt(list), true, nil
+			return getLatestUpdatedAt(obj), true, nil
 		})
 
 		wg.Wait()
@@ -158,7 +158,7 @@ func TestPoller(t *testing.T) {
 		var hasReturnedError bool
 		// start a poller with handler that fails on first attempt and succeeds on second
 		getLatestUpdatedAt := getLatestUpdatedAt()
-		runTestPoller(t, ctx, client, func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
+		runTestPoller(t, ctx, client, func(obj diff.UpdateableObject[string]) (time.Time, bool, error) {
 			if !hasReturnedError {
 				hasReturnedError = true
 				return time.Time{}, false, errors.New("first call failed")
@@ -171,18 +171,18 @@ func TestPoller(t *testing.T) {
 
 			wg.Done()
 
-			return getLatestUpdatedAt(list), true, nil
+			return getLatestUpdatedAt(obj), true, nil
 		})
 
 		wg.Wait()
 	})
 }
 
-func runTestPoller[K string](
+func runTestPoller(
 	t *testing.T,
 	ctx context.Context,
 	client *mockClient,
-	handler func(diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, bool, error),
+	handler func(object diff.UpdateableObject[string]) (time.Time, bool, error),
 ) {
 	t.Helper()
 
@@ -190,8 +190,8 @@ func runTestPoller[K string](
 		func(ctx context.Context, object any, updatedAfter time.Time) error {
 			return client.GetWorkspaceConfigs(ctx, object, updatedAfter)
 		},
-		func(list diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
-			return handler(list)
+		func(obj diff.UpdateableObject[string]) (time.Time, bool, error) {
+			return handler(obj)
 		},
 		logger.NOP,
 	)
@@ -205,18 +205,18 @@ func runTestPoller[K string](
 	}()
 }
 
-func setupPoller[K string](
+func setupPoller(
 	getter func(ctx context.Context, object any, updatedAfter time.Time) error,
-	handler WorkspaceConfigsHandler[K, *modelv2.WorkspaceConfig],
+	handler WorkspaceConfigsHandler[string],
 	log logger.Logger,
 ) (func(context.Context), error) {
-	p, err := newWorkspaceConfigsPoller[K, *modelv2.WorkspaceConfig](
-		func(ctx context.Context, l diff.UpdateableList[K, *modelv2.WorkspaceConfig], updatedAfter time.Time) error {
+	p, err := newWorkspaceConfigsPoller[string](
+		func(ctx context.Context, l diff.UpdateableObject[string], updatedAfter time.Time) error {
 			return getter(ctx, l, updatedAfter)
 		},
 		handler,
-		func() diff.UpdateableList[K, *modelv2.WorkspaceConfig] {
-			return &modelv2.WorkspaceConfigs[K, *modelv2.WorkspaceConfig]{}
+		func() diff.UpdateableObject[string] {
+			return &modelv2.WorkspaceConfigs{}
 		},
 		log,
 	)
@@ -227,30 +227,32 @@ func setupPoller[K string](
 	return p.Run, nil
 }
 
-func newWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
-	getter WorkspaceConfigsGetter[K, T],
-	handler WorkspaceConfigsHandler[K, T],
-	constructor func() diff.UpdateableList[K, T],
+func newWorkspaceConfigsPoller[K comparable](
+	getter WorkspaceConfigsGetter[K],
+	handler WorkspaceConfigsHandler[K],
+	constructor func() diff.UpdateableObject[K],
 	log logger.Logger,
-) (*WorkspaceConfigsPoller[K, T], error) {
+) (*WorkspaceConfigsPoller[K], error) {
 	return NewWorkspaceConfigsPoller(getter, handler, constructor,
-		WithLogger[K, T](log.Child("poller")),
-		WithPollingInterval[K, T](time.Nanosecond),
-		WithPollingBackoffInitialInterval[K, T](time.Nanosecond),
-		WithPollingBackoffMaxInterval[K, T](time.Nanosecond),
-		WithPollingBackoffMultiplier[K, T](1),
+		WithLogger[K](log.Child("poller")),
+		WithPollingInterval[K](time.Nanosecond),
+		WithPollingBackoffInitialInterval[K](time.Nanosecond),
+		WithPollingBackoffMaxInterval[K](time.Nanosecond),
+		WithPollingBackoffMultiplier[K](1),
 	)
 }
 
-func getLatestUpdatedAt() func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) time.Time {
+func getLatestUpdatedAt() func(list diff.UpdateableObject[string]) time.Time {
 	var latestUpdatedAt time.Time
-	return func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) time.Time {
-		for _, wc := range list.List() {
-			if wc.IsNil() || wc.GetUpdatedAt().IsZero() {
-				continue
-			}
-			if wc.GetUpdatedAt().After(latestUpdatedAt) {
-				latestUpdatedAt = wc.GetUpdatedAt()
+	return func(obj diff.UpdateableObject[string]) time.Time {
+		for uo := range obj.Updateables() {
+			for _, wc := range uo.List() {
+				if wc.IsNil() || wc.GetUpdatedAt().IsZero() {
+					continue
+				}
+				if wc.GetUpdatedAt().After(latestUpdatedAt) {
+					latestUpdatedAt = wc.GetUpdatedAt()
+				}
 			}
 		}
 		return latestUpdatedAt
@@ -284,13 +286,13 @@ func (m *mockClient) GetWorkspaceConfigs(ctx context.Context, object any, update
 		return call.errToBeReturned
 	}
 
-	type T = *modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]
+	type T = *modelv2.WorkspaceConfigs
 	*object.(T) = *call.dataToBeReturned.(T)
 
 	return ctx.Err()
 }
 
-var mockedResponses = []*modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{
+var mockedResponses = []*modelv2.WorkspaceConfigs{
 	{
 		Workspaces: map[string]*modelv2.WorkspaceConfig{
 			"wc-1": {UpdatedAt: time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)},

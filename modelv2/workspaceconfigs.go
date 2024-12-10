@@ -7,7 +7,12 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/diff"
 )
 
-var _ diff.UpdateableObject[string] = &WorkspaceConfigs{}
+var (
+	_ diff.UpdateableObject[string]                       = &WorkspaceConfigs{}
+	_ diff.UpdateableList[string, diff.UpdateableElement] = &Workspaces{}
+	_ diff.NonUpdateablesList[string, any]                = &SourceDefinitions{}
+	_ diff.NonUpdateablesList[string, any]                = &DestinationDefinitions{}
+)
 
 // WorkspaceConfigs represents workspace configurations of one or more workspaces, as well as definitions shared by all of them.
 type WorkspaceConfigs struct {
@@ -31,8 +36,6 @@ func (wcs *WorkspaceConfigs) NonUpdateables() iter.Seq[diff.NonUpdateablesList[s
 		yield(&wcs.DestinationDefinitions)
 	}
 }
-
-var _ diff.UpdateableList[string, diff.UpdateableElement] = &Workspaces{}
 
 type Workspaces map[string]*WorkspaceConfig
 
@@ -82,8 +85,6 @@ type WorkspaceConfig struct {
 func (wc *WorkspaceConfig) GetUpdatedAt() time.Time { return wc.UpdatedAt }
 func (wc *WorkspaceConfig) IsNil() bool             { return wc == nil }
 
-var _ diff.NonUpdateablesList[string, any] = &SourceDefinitions{}
-
 type SourceDefinitions map[string]*SourceDefinition
 
 func (sd *SourceDefinitions) Type() string { return "SourceDefinitions" }
@@ -101,8 +102,6 @@ func (sd *SourceDefinitions) List() iter.Seq2[string, any] {
 		}
 	}
 }
-
-var _ diff.NonUpdateablesList[string, any] = &DestinationDefinitions{}
 
 type DestinationDefinitions map[string]*DestinationDefinition
 

@@ -338,11 +338,3 @@ func getSourceDefinitions(v UpdateableObject[string]) map[string]*SourceDefiniti
 func getDestinationDefinitions(v UpdateableObject[string]) map[string]*DestinationDefinition {
 	return v.(*WorkspaceConfigs).DestinationDefinitions
 }
-
-func TestDiff(t *testing.T) {
-	updater := &Updater[string]{}
-
-	wcs := &WorkspaceConfigs{}
-	tm, ok, err := updater.UpdateCache(wcs, wcs)
-	t.Log(tm, ok, err)
-}

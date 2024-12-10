@@ -104,7 +104,7 @@ func TestIncrementalUpdates(t *testing.T) {
 	getLatestUpdatedAt := getLatestUpdatedAt() // this is to cache the latestUpdatedAt
 
 	// send the request the first time
-	wcs := &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{}
+	wcs := &modelv2.WorkspaceConfigs{}
 	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, time.Time{})
 	require.NoError(t, err)
 	require.Len(t, wcs.Workspaces, 2)
@@ -118,7 +118,7 @@ func TestIncrementalUpdates(t *testing.T) {
 	require.Equal(t, "2024-11-27T20:13:30.647Z", updatedAt.Format(updatedAfterTimeFormat))
 
 	// send the request again, should receive the new dummy workspace and no updates for the other 2 workspaces
-	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
 	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	require.Len(t, wcs.Workspaces, 3)
@@ -137,7 +137,7 @@ func TestIncrementalUpdates(t *testing.T) {
 	require.Equal(t, receivedUpdatedAfter[0], expectedUpdatedAfter, updatedAfterTimeFormat)
 
 	// send the request again, should receive the updated dummy workspace
-	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
 	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	require.Len(t, wcs.Workspaces, 3)
@@ -156,7 +156,7 @@ func TestIncrementalUpdates(t *testing.T) {
 	require.Equal(t, receivedUpdatedAfter[1], expectedUpdatedAfter, updatedAfterTimeFormat)
 
 	// send the request again, should not receive dummy since it was deleted
-	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
 	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
@@ -173,7 +173,7 @@ func TestIncrementalUpdates(t *testing.T) {
 	require.Equal(t, receivedUpdatedAfter[2], expectedUpdatedAfter, updatedAfterTimeFormat)
 
 	// send the request again, the updatedAfter should be the same as the last request since no updates
-	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
 	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
@@ -191,7 +191,7 @@ func TestIncrementalUpdates(t *testing.T) {
 
 	// last request, ideally the application should detect that there is an inconsistency and trigger a full update
 	// although that behaviour is not tested here
-	wcs = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{} // reset the workspace configs
+	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
 	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
@@ -206,19 +206,21 @@ func TestIncrementalUpdates(t *testing.T) {
 	require.Equal(t, receivedUpdatedAfter[4], expectedUpdatedAfter, updatedAfterTimeFormat)
 }
 
-func getLatestUpdatedAt() func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, time.Time) {
+func getLatestUpdatedAt() func(list diff.UpdateableObject[string]) (time.Time, time.Time) {
 	var latestUpdatedAt time.Time
-	return func(list diff.UpdateableList[string, *modelv2.WorkspaceConfig]) (time.Time, time.Time) {
+	return func(obj diff.UpdateableObject[string]) (time.Time, time.Time) {
 		var localUpdatedAt time.Time
-		for _, wc := range list.List() {
-			if wc.IsNil() || wc.GetUpdatedAt().IsZero() {
-				continue
-			}
-			if wc.GetUpdatedAt().After(latestUpdatedAt) {
-				latestUpdatedAt = wc.GetUpdatedAt()
-			}
-			if wc.GetUpdatedAt().After(localUpdatedAt) {
-				localUpdatedAt = wc.GetUpdatedAt()
+		for uo := range obj.Updateables() {
+			for _, wc := range uo.List() {
+				if wc.IsNil() || wc.GetUpdatedAt().IsZero() {
+					continue
+				}
+				if wc.GetUpdatedAt().After(latestUpdatedAt) {
+					latestUpdatedAt = wc.GetUpdatedAt()
+				}
+				if wc.GetUpdatedAt().After(localUpdatedAt) {
+					localUpdatedAt = wc.GetUpdatedAt()
+				}
 			}
 		}
 		return latestUpdatedAt, localUpdatedAt

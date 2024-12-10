@@ -67,19 +67,19 @@ func setupControlPlaneSDK(log logger.Logger) (*cpsdk.ControlPlane, error) {
 	return cpsdk.New(options...)
 }
 
-func setupWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
-	getter poller.WorkspaceConfigsGetter[K, T],
-	handler poller.WorkspaceConfigsHandler[K, T],
-	constructor func() diff.UpdateableList[K, T],
+func setupWorkspaceConfigsPoller[K comparable](
+	getter poller.WorkspaceConfigsGetter[K],
+	handler poller.WorkspaceConfigsHandler[K],
+	constructor func() diff.UpdateableObject[K],
 	log logger.Logger,
-) (*poller.WorkspaceConfigsPoller[K, T], error) {
+) (*poller.WorkspaceConfigsPoller[K], error) {
 	return poller.NewWorkspaceConfigsPoller(getter, handler, constructor,
-		poller.WithLogger[K, T](log.Child("poller")),
-		poller.WithPollingInterval[K, T](1*time.Second),
-		poller.WithPollingBackoffInitialInterval[K, T](1*time.Second),
-		poller.WithPollingBackoffMaxInterval[K, T](1*time.Minute),
-		poller.WithPollingBackoffMultiplier[K, T](1.5),
-		poller.WithOnResponse[K, T](func(updated bool, err error) {
+		poller.WithLogger[K](log.Child("poller")),
+		poller.WithPollingInterval[K](1*time.Second),
+		poller.WithPollingBackoffInitialInterval[K](1*time.Second),
+		poller.WithPollingBackoffMaxInterval[K](1*time.Minute),
+		poller.WithPollingBackoffMultiplier[K](1.5),
+		poller.WithOnResponse[K](func(updated bool, err error) {
 			if err != nil {
 				// e.g. bump metric on failure
 				log.Errorn("failed to poll workspace configs", obskit.Error(err))
@@ -91,8 +91,8 @@ func setupWorkspaceConfigsPoller[K comparable, T diff.UpdateableElement](
 	)
 }
 
-func setupClientWithPoller[K string](
-	cache *modelv2.WorkspaceConfigs[K, *modelv2.WorkspaceConfig],
+func setupClientWithPoller(
+	cache diff.UpdateableObject[string],
 	cacheMu *sync.RWMutex,
 	log logger.Logger,
 ) (func(context.Context), error) {
@@ -101,19 +101,19 @@ func setupClientWithPoller[K string](
 		return nil, fmt.Errorf("error setting up control plane sdk: %v", err)
 	}
 
-	updater := diff.Updater[K, *modelv2.WorkspaceConfig]{}
+	updater := diff.Updater[string]{}
 
-	p, err := setupWorkspaceConfigsPoller[K, *modelv2.WorkspaceConfig](
-		func(ctx context.Context, l diff.UpdateableList[K, *modelv2.WorkspaceConfig], updatedAfter time.Time) error {
+	p, err := setupWorkspaceConfigsPoller[string](
+		func(ctx context.Context, l diff.UpdateableObject[string], updatedAfter time.Time) error {
 			return sdk.GetWorkspaceConfigs(ctx, l, updatedAfter)
 		},
-		func(list diff.UpdateableList[K, *modelv2.WorkspaceConfig]) (time.Time, bool, error) {
+		func(obj diff.UpdateableObject[string]) (time.Time, bool, error) {
 			cacheMu.Lock()
 			defer cacheMu.Unlock()
-			return updater.UpdateCache(list, cache)
+			return updater.UpdateCache(obj, cache)
 		},
-		func() diff.UpdateableList[K, *modelv2.WorkspaceConfig] {
-			return &modelv2.WorkspaceConfigs[K, *modelv2.WorkspaceConfig]{}
+		func() diff.UpdateableObject[string] {
+			return &modelv2.WorkspaceConfigs{}
 		},
 		log,
 	)
@@ -129,7 +129,7 @@ func run(ctx context.Context, log logger.Logger) error {
 	var (
 		// WARNING: if you don't want to use modelv2.WorkspaceConfigs because you're interested in a smaller subset of
 		// the data, then have a look at diff_test.go for an example of how to implement a custom UpdateableList.
-		cache   = &modelv2.WorkspaceConfigs[string, *modelv2.WorkspaceConfig]{}
+		cache   = &modelv2.WorkspaceConfigs{}
 		cacheMu = &sync.RWMutex{}
 	)
 
