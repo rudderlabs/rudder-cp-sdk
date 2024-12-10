@@ -59,3 +59,7 @@ func TestWorkspaceConfigsUpdatedAt(t *testing.T) {
 	require.Equal(t, wcs.Workspaces["ws-3"], ws)
 	require.Equal(t, time.Date(2021, 1, 3, 0, 0, 0, 0, time.UTC), wcs.Workspaces["ws-3"].GetUpdatedAt())
 }
+
+func TestNonUpdateables(t *testing.T) {
+	t.Skip("TODO")
+}
