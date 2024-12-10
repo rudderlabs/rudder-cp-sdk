@@ -105,7 +105,7 @@ func TestIncrementalUpdates(t *testing.T) {
 
 	// send the request the first time
 	wcs := &modelv2.WorkspaceConfigs{}
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, time.Time{})
+	err = cpSDK.GetWorkspaceConfigs(ctx, wcs, time.Time{})
 	require.NoError(t, err)
 	require.Len(t, wcs.Workspaces, 2)
 	require.Contains(t, wcs.Workspaces, "2hCBi02C8xYS8Rsy1m9bJjTlKy6")
@@ -119,7 +119,7 @@ func TestIncrementalUpdates(t *testing.T) {
 
 	// send the request again, should receive the new dummy workspace and no updates for the other 2 workspaces
 	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
+	err = cpSDK.GetWorkspaceConfigs(ctx, wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	require.Len(t, wcs.Workspaces, 3)
 	require.Contains(t, wcs.Workspaces, "2hCBi02C8xYS8Rsy1m9bJjTlKy6")
@@ -138,7 +138,7 @@ func TestIncrementalUpdates(t *testing.T) {
 
 	// send the request again, should receive the updated dummy workspace
 	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
+	err = cpSDK.GetWorkspaceConfigs(ctx, wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	require.Len(t, wcs.Workspaces, 3)
 	require.Contains(t, wcs.Workspaces, "2hCBi02C8xYS8Rsy1m9bJjTlKy6")
@@ -157,7 +157,7 @@ func TestIncrementalUpdates(t *testing.T) {
 
 	// send the request again, should not receive dummy since it was deleted
 	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
+	err = cpSDK.GetWorkspaceConfigs(ctx, wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
 	require.Truef(t, updatedAt.IsZero(), "%+v", wcs)
@@ -174,7 +174,7 @@ func TestIncrementalUpdates(t *testing.T) {
 
 	// send the request again, the updatedAfter should be the same as the last request since no updates
 	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
+	err = cpSDK.GetWorkspaceConfigs(ctx, wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
 	require.Truef(t, updatedAt.IsZero(), "%+v", wcs)
@@ -192,7 +192,7 @@ func TestIncrementalUpdates(t *testing.T) {
 	// last request, ideally the application should detect that there is an inconsistency and trigger a full update
 	// although that behaviour is not tested here
 	wcs = &modelv2.WorkspaceConfigs{} // reset the workspace configs
-	err = cpSDK.GetWorkspaceConfigs(ctx, &wcs, latestUpdatedAt)
+	err = cpSDK.GetWorkspaceConfigs(ctx, wcs, latestUpdatedAt)
 	require.NoError(t, err)
 	latestUpdatedAt, updatedAt = getLatestUpdatedAt(wcs)
 	require.Truef(t, updatedAt.IsZero(), "%+v", wcs)
