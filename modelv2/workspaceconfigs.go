@@ -32,8 +32,12 @@ func (wcs *WorkspaceConfigs) Updateables() iter.Seq[diff.UpdateableList[string, 
 
 func (wcs *WorkspaceConfigs) NonUpdateables() iter.Seq[diff.NonUpdateablesList[string, any]] {
 	return func(yield func(diff.NonUpdateablesList[string, any]) bool) {
-		yield(&wcs.SourceDefinitions)
-		yield(&wcs.DestinationDefinitions)
+		if !yield(&wcs.SourceDefinitions) {
+			return
+		}
+		if !yield(&wcs.DestinationDefinitions) {
+			return
+		}
 	}
 }
 
