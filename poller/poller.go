@@ -71,6 +71,15 @@ func NewWorkspaceConfigsPoller[K comparable](
 // Run starts polling for new workspace configs every interval.
 // It will stop polling when the context is cancelled.
 func (p *WorkspaceConfigsPoller[K]) Run(ctx context.Context) {
+	// Try the first time with no delay
+	updated, err := p.poll(ctx)
+	if p.onResponse != nil {
+		p.onResponse(updated, err)
+	}
+	if err != nil { // Log the error and retry with backoff later, no need to retry here
+		p.log.Errorn("failed to poll workspace configs", obskit.Error(err))
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
