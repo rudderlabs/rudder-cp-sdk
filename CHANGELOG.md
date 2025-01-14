@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.1.1...v1.2.0) (2025-01-14)
+
+
+### Features
+
+* incremental updates with updatedAfter ([#71](https://github.com/rudderlabs/rudder-cp-sdk/issues/71)) ([854720a](https://github.com/rudderlabs/rudder-cp-sdk/commit/854720ade90c34e5c5effa04dda859f0df89601e))
+
 ## [1.1.1](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.1.0...v1.1.1) (2024-06-12)
 
 
