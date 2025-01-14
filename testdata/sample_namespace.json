@@ -1,0 +1,455 @@
+{
+    "workspaces": {
+        "2hCBi02C8xYS8Rsy1m9bJjTlKy6": {
+            "sources": {
+                "2hCDcJJGtZCIMDWjAyjsOg0W1Hr": {
+                    "name": "Source 1",
+                    "writeKey": "some-write-key-for-source-1",
+                    "enabled": true,
+                    "deleted": false,
+                    "config": {},
+                    "liveEventsConfig": {
+                        "eventUpload": false,
+                        "eventUploadTS": 1729085754256
+                    },
+                    "createdBy": "2fdoRuXbHt7VRLU7Zt4cHjdypkR",
+                    "transient": false,
+                    "sourceDefinitionName": "Javascript",
+                    "dgSourceTrackingPlanConfig": null,
+                    "secretVersion": null,
+                    "createdAt": "2024-05-30T17:14:03.570Z",
+                    "updatedAt": "2024-10-16T13:35:54.256Z",
+                    "geoEnrichment": {
+                        "enabled": false
+                    }
+                }
+            },
+            "destinations": {
+                "2i9lmpOsrP9KHqDR5hAlKWfNzb5": {
+                    "name": "Destination 1",
+                    "enabled": true,
+                    "config": {
+                        "serviceAccountUserName": "",
+                        "serviceAccountSecret": "",
+                        "projectId": "3266642",
+                        "dataResidency": "us",
+                        "identityMergeApi": "original",
+                        "userDeletionApi": "engage",
+                        "strictMode": false,
+                        "ignoreDnt": false,
+                        "useUserDefinedPageEventName": true,
+                        "useUserDefinedScreenEventName": false,
+                        "people": true,
+                        "setAllTraitsByDefault": true,
+                        "consolidatedPageCalls": true,
+                        "trackCategorizedPages": false,
+                        "trackNamedPages": false,
+                        "sourceName": "",
+                        "crossSubdomainCookie": false,
+                        "persistenceType": "cookie",
+                        "persistenceName": "",
+                        "secureCookie": false,
+                        "useNewMapping": false,
+                        "eventFilteringOption": "disable",
+                        "userDefinedPageEventTemplate": "Page Loaded",
+                        "useNativeSDK": {
+                            "web": false
+                        },
+                        "connectionMode": {
+                            "web": "cloud"
+                        },
+                        "oneTrustCookieCategories": {
+                            "web": [
+                                {
+                                    "oneTrustCookieCategory": ""
+                                }
+                            ]
+                        },
+                        "ketchConsentPurposes": {
+                            "web": [
+                                {
+                                    "purpose": ""
+                                }
+                            ]
+                        },
+                        "consentManagement": {
+                            "web": [
+                                {
+                                    "provider": "oneTrust",
+                                    "consents": []
+                                },
+                                {
+                                    "provider": "ketch",
+                                    "consents": []
+                                }
+                            ]
+                        },
+                        "token": "some-fancy-token"
+                    },
+                    "liveEventsConfig": {},
+                    "destinationDefinitionName": "MP",
+                    "deleted": false,
+                    "transformationIds": [],
+                    "createdAt": "2024-06-20T19:13:55.060Z",
+                    "updatedAt": "2024-10-01T09:28:13.436Z",
+                    "revisionId": "2mpYH5Yaa2NbArGnp02Vq424jDb",
+                    "secretVersion": 2
+                },
+                "2hQdZuO7jPzgcw1uN9NaU1u2wPg": {
+                    "name": "Destination 2",
+                    "enabled": true,
+                    "config": {
+                        "project": "a-very-cool-project",
+                        "location": "US",
+                        "bucketName": "rudderstack_bucket_name_1",
+                        "prefix": "prod",
+                        "namespace": "rudderstack_ns_prod",
+                        "syncFrequency": "180",
+                        "skipUsersTable": false,
+                        "skipTracksTable": false,
+                        "jsonPaths": "",
+                        "connectionMode": {
+                            "web": "cloud"
+                        },
+                        "oneTrustCookieCategories": {
+                            "web": [
+                                {
+                                    "oneTrustCookieCategory": ""
+                                }
+                            ]
+                        },
+                        "underscoreDivideNumbers": true,
+                        "allowUsersContextTraits": true,
+                        "consentManagement": {
+                            "web": [
+                                {
+                                    "provider": "oneTrust",
+                                    "consents": []
+                                }
+                            ]
+                        }
+                    },
+                    "liveEventsConfig": {},
+                    "destinationDefinitionName": "BQ",
+                    "deleted": false,
+                    "transformationIds": [],
+                    "createdAt": "2024-06-04T19:44:53.606Z",
+                    "updatedAt": "2024-10-01T09:41:58.642Z",
+                    "revisionId": "2mpZwj4fabdKCCOZe7BDMgTKKJq",
+                    "secretVersion": 3
+                }
+            },
+            "connections": {
+                "2i9lmuu9TW8vT4YJ0rTTSMDtVJR": {
+                    "sourceId": "2hCDcJJGtZCIMDWjAyjsOg0W1Hr",
+                    "destinationId": "2i9lmpOsrP9KHqDR5hAlKWfNzb5",
+                    "enabled": true,
+                    "processorEnabled": true
+                },
+                "2hQdZtIleMfPqvozvCYtGDdjDYa": {
+                    "sourceId": "2hCDcJJGtZCIMDWjAyjsOg0W1Hr",
+                    "destinationId": "2hQdZuO7jPzgcw1uN9NaU1u2wPg",
+                    "enabled": true,
+                    "processorEnabled": true
+                }
+            },
+            "destinationTransformations": [],
+            "transformations": {},
+            "libraries": [],
+            "whtProjects": {},
+            "trackingPlans": {},
+            "accounts": {},
+            "credentials": {},
+            "settings": {
+                "dataRetention": {
+                    "disableReportingPii": false,
+                    "useSelfStorage": false,
+                    "retentionPeriod": "default",
+                    "storagePreferences": {
+                        "procErrors": true,
+                        "gatewayDumps": true
+                    }
+                },
+                "eventAuditEnabled": false
+            },
+            "resources": {},
+            "eventReplays": {},
+            "updatedAt": "2024-10-16T13:35:54.830Z"
+        },
+        "2bVMV2JiAJe42OXZrzyvJI75v0N": {
+            "sources": {
+                "2jIY89R3Ul5PxVsynuYapfmgtfP": {
+                    "name": "Source 2",
+                    "writeKey": "some-write-key-for-source-2",
+                    "enabled": true,
+                    "deleted": false,
+                    "config": {
+                        "origin": "model",
+                        "primaryKey": "uuid"
+                    },
+                    "liveEventsConfig": {
+                        "eventUpload": false,
+                        "eventUploadTS": 1723214107805
+                    },
+                    "createdBy": "2be2oFX4OkMy3oKxJGLZQMTuqGA",
+                    "transient": false,
+                    "sourceDefinitionName": "bigquery",
+                    "dgSourceTrackingPlanConfig": null,
+                    "secretVersion": null,
+                    "createdAt": "2024-07-15T20:38:15.071Z",
+                    "updatedAt": "2024-08-09T14:35:07.805Z",
+                    "geoEnrichment": {
+                        "enabled": false
+                    },
+                    "sqlModel": {
+                        "id": "2jIY89vtlCllbBaQiew9UpxcnRl",
+                        "accountId": "2dbIDPUfRgMcUevSImAmjSMjTZC"
+                    }
+                }
+            },
+            "destinations": {
+                "2nqWMUk1fNNAw4rU3bHYcm58CZZ": {
+                    "name": "Destination 3",
+                    "enabled": false,
+                    "config": {
+                        "accountId": "969696",
+                        "isSPA": false,
+                        "sendExperimentTrack": true,
+                        "sendExperimentIdentify": false,
+                        "eventFilteringOption": "blacklistedEvents",
+                        "libraryTolerance": "2500",
+                        "settingsTolerance": "2000",
+                        "useExistingJquery": false,
+                        "whitelistedEvents": [
+                            {
+                                "eventName": "Page"
+                            }
+                        ],
+                        "blacklistedEvents": [],
+                        "useNativeSDK": {
+                            "web": true
+                        },
+                        "consentManagement": {
+                            "web": [
+                                {
+                                    "provider": "oneTrust",
+                                    "resolutionStrategy": "",
+                                    "consents": []
+                                }
+                            ]
+                        },
+                        "connectionMode": {
+                            "web": "device"
+                        },
+                        "oneTrustCookieCategories": {},
+                        "ketchConsentPurposes": {}
+                    },
+                    "liveEventsConfig": {},
+                    "destinationDefinitionName": "VWO",
+                    "deleted": false,
+                    "transformationIds": [],
+                    "createdAt": "2024-10-23T16:30:38.111Z",
+                    "updatedAt": "2024-11-27T20:13:30.126Z",
+                    "revisionId": "2pRomv2tOn7OgjzUye2bIgPUKfP",
+                    "secretVersion": 2
+                }
+            },
+            "connections": {
+                "2i9I6qe9ALBTu37KKLc5nN8PwZT": {
+                    "sourceId": "2jIY89R3Ul5PxVsynuYapfmgtfP",
+                    "destinationId": "2nqWMUk1fNNAw4rU3bHYcm58CZZ",
+                    "enabled": true,
+                    "processorEnabled": true
+                }
+            },
+            "destinationTransformations": [
+                {
+                    "destinationId": "2nqWMUk1fNNAw4rU3bHYcm58CZZ",
+                    "transformationId": "2iQSOW2V2u9XWNRyxbrcgPeNyVP",
+                    "config": {
+                        "enableForCloudMode": true,
+                        "enableForDeviceMode": false,
+                        "propagateEventsUntransformedOnErrorForDeviceMode": false,
+                        "propagateEventsUntransformedOnErrorForCloudMode": false
+                    }
+                }
+            ],
+            "transformations": {
+                "2iQSOW2V2u9XWNRyxbrcgPeNyVP": {
+                    "versionId": "2iQgjbu7kNBAemcp373cJPVpWhf",
+                    "liveEventsConfig": {}
+                }
+            },
+            "libraries": [
+                {
+                    "versionId": "2hgzDvRrNREZMKm9emKSrWcnECv"
+                },
+                {
+                    "versionId": "2pLoAb3lPyHV50Kx9mwq6dfaLUU"
+                }
+            ],
+            "whtProjects": {},
+            "trackingPlans": {
+                "tp_2o7altLHTkRsQMa5NKVzAbH2fQ6": {
+                    "version": 2
+                },
+                "tp_2ntNQ2Uw7V6pa80Gi9eUgWWZEJz": {
+                    "version": 4
+                }
+            },
+            "accounts": {
+                "2gViSzlt6hyqKmPsrdkFaC1gxke": {
+                    "name": "Account name 1",
+                    "role": "singer-facebook-marketing",
+                    "options": {},
+                    "secret": {
+                        "access_token": "some-access-token"
+                    },
+                    "userId": "2fdoRuYbHt1HBFE7Yt4cHjdxpkZ",
+                    "metadata": {
+                        "userId": "10168584126310482",
+                        "displayName": "Account name 1"
+                    },
+                    "secretVersion": 4,
+                    "rudderCategory": "source"
+                }
+            },
+            "settings": {
+                "dataRetention": {
+                    "disableReportingPii": false,
+                    "useSelfStorage": false,
+                    "retentionPeriod": "default",
+                    "storagePreferences": {
+                        "procErrors": true,
+                        "gatewayDumps": true
+                    }
+                },
+                "eventAuditEnabled": true
+            },
+            "updatedAt": "2024-11-27T20:13:30.647Z"
+        }
+    },
+    "sourceDefinitions": {
+        "close_crm": {
+            "options": {
+                "isBeta": true
+            },
+            "displayName": "Close CRM",
+            "category": "webhook",
+            "config": {},
+            "createdAt": "2024-07-03T09:57:46.015Z",
+            "updatedAt": "2024-07-03T09:57:46.015Z",
+            "id": "2ijOkxneabV0DLzk0nsZUKz57ie",
+            "type": "cloud"
+        },
+        "singer-klaviyo": {
+            "options": {
+                "image": "rudderstack/source-klaviyo:v7.1.1-alpha.ea2e0337e7",
+                "deprecated": true,
+                "deprecationLabel": "Klaviyo API v1 is deprecated and will be retired on June 30, 2024 . Please use Klaviyo v2 source instead."
+            },
+            "displayName": "Klaviyo",
+            "category": "singer-protocol",
+            "config": null,
+            "createdAt": "2022-02-01T10:51:18.705Z",
+            "updatedAt": "2024-07-03T09:57:50.353Z",
+            "id": "24VPFifQ0rEgLgrUzlM71Xeq0uw",
+            "type": "cloudSource"
+        }
+    },
+    "destinationDefinitions": {
+        "LINKEDIN_ADS": {
+            "displayName": "Linkedin Ads",
+            "config": {
+                "auth": {
+                    "role": "linkedin_ads",
+                    "type": "OAuth",
+                    "rudderScopes": [
+                        "delivery"
+                    ]
+                },
+                "destConfig": {
+                    "web": [
+                        "connectionMode",
+                        "oneTrustCookieCategories",
+                        "ketchConsentPurposes"
+                    ]
+                },
+                "secretKeys": [],
+                "cdkV2Enabled": true,
+                "transformAtV1": "router",
+                "supportedSourceTypes": [
+                    "web"
+                ],
+                "saveDestinationResponse": true,
+                "supportedConnectionModes": {
+                    "web": [
+                        "cloud"
+                    ]
+                },
+                "supportedMessageTypes": [
+                    "track"
+                ]
+            },
+            "responseRules": {},
+            "category": null,
+            "options": {
+                "isBeta": true
+            },
+            "createdAt": "2024-04-04T09:33:25.123Z",
+            "updatedAt": "2024-09-19T10:35:41.520Z",
+            "id": "2ed8gUO1eIa0Hx2HT38WxINskMI"
+        },
+        "SFTP": {
+            "displayName": "SFTP",
+            "config": {
+                "destConfig": {
+                    "warehouse": [
+                        "oneTrustCookieCategories",
+                        "ketchConsentPurposes"
+                    ],
+                    "defaultConfig": [
+                        "host",
+                        "port",
+                        "authMethod",
+                        "username",
+                        "password",
+                        "privateKey",
+                        "fileFormat",
+                        "filePath"
+                    ]
+                },
+                "secretKeys": [
+                    "password",
+                    "privateKey"
+                ],
+                "transformAtV1": "none",
+                "syncBehaviours": [
+                    "mirror"
+                ],
+                "disableJsonMapper": true,
+                "supportedSourceTypes": [
+                    "warehouse"
+                ],
+                "supportsVisualMapper": true,
+                "saveDestinationResponse": true,
+                "supportedConnectionModes": {
+                    "warehouse": [
+                        "cloud"
+                    ]
+                },
+                "supportedMessageTypes": [
+                    "record"
+                ]
+            },
+            "responseRules": {},
+            "category": null,
+            "options": {
+                "isBeta": true
+            },
+            "createdAt": "2024-05-16T10:45:48.349Z",
+            "updatedAt": "2024-09-19T10:35:09.049Z",
+            "id": "2gXufoBROA1QPTbcDeM2SwQxow4"
+        }
+    }
+}

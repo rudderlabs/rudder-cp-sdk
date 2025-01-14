@@ -3,6 +3,7 @@ package cpsdk
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -10,10 +11,9 @@ import (
 	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
-// BenchmarkGetWorkspaceConfigs on free-us-1, last time it showed 371MB of allocations with this technique
 func BenchmarkGetWorkspaceConfigs(b *testing.B) {
 	conf := config.New()
-	baseURL := conf.GetString("BASE_URL", "https://api.rudderstack.com")
+	baseURL := conf.GetString("BASE_URL", "https://dp.api.rudderstack.com/")
 	namespace := conf.GetString("NAMESPACE", "free-us-1")
 	identity := conf.GetString("IDENTITY", "")
 	if identity == "" {
@@ -24,39 +24,15 @@ func BenchmarkGetWorkspaceConfigs(b *testing.B) {
 	cpSDK, err := New(
 		WithBaseUrl(baseURL),
 		WithLogger(logger.NOP),
-		WithPollingInterval(0), // Setting the poller interval to 0 to disable the poller
 		WithNamespaceIdentity(namespace, identity),
 	)
 	require.NoError(b, err)
-	defer cpSDK.Close()
-
-	_, err = cpSDK.GetWorkspaceConfigs(context.Background())
-	require.NoError(b, err)
-}
-
-// BenchmarkGetCustomWorkspaceConfigs on free-us-1, last time it showed 88MB of allocations with this technique
-func BenchmarkGetCustomWorkspaceConfigs(b *testing.B) {
-	conf := config.New()
-	baseURL := conf.GetString("BASE_URL", "https://api.rudderstack.com")
-	namespace := conf.GetString("NAMESPACE", "free-us-1")
-	identity := conf.GetString("IDENTITY", "")
-	if identity == "" {
-		b.Skip("IDENTITY is not set")
-		return
-	}
-
-	cpSDK, err := New(
-		WithBaseUrl(baseURL),
-		WithLogger(logger.NOP),
-		WithPollingInterval(0), // Setting the poller interval to 0 to disable the poller
-		WithNamespaceIdentity(namespace, identity),
-	)
-	require.NoError(b, err)
-	defer cpSDK.Close()
 
 	var workspaceConfigs WorkspaceConfigs
-	err = cpSDK.GetCustomWorkspaceConfigs(context.Background(), &workspaceConfigs)
+	err = cpSDK.GetWorkspaceConfigs(context.Background(), &workspaceConfigs, time.Time{})
 	require.NoError(b, err)
+	require.NotNil(b, workspaceConfigs)
+	require.Greater(b, len(workspaceConfigs.Workspaces), 0)
 }
 
 type WorkspaceConfigs struct {

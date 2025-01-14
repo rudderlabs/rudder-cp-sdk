@@ -3,7 +3,6 @@ package cpsdk
 import (
 	"fmt"
 	"net/url"
-	"time"
 
 	"github.com/rudderlabs/rudder-go-kit/logger"
 
@@ -38,13 +37,14 @@ func WithNamespaceIdentity(namespace, secret string) Option {
 
 func WithBaseUrl(baseUrl string) Option {
 	return func(cp *ControlPlane) error {
-		url, err := url.Parse(baseUrl)
+		u, err := url.Parse(baseUrl)
 		if err != nil {
 			return fmt.Errorf("invalid base url: %w", err)
 		}
 
-		cp.baseUrl = url
-		cp.baseUrlV2 = url
+		cp.baseUrl = u
+		cp.baseUrlV2 = u
+
 		return nil
 	}
 }
@@ -59,16 +59,6 @@ func WithAdminCredentials(credentials *identity.AdminCredentials) Option {
 func WithLogger(log logger.Logger) Option {
 	return func(cp *ControlPlane) error {
 		cp.log = log
-		return nil
-	}
-}
-
-// WithPollingInterval sets the interval at which the SDK polls for new configs.
-// If not set, the SDK will poll every 1 second.
-// If set to 0, the SDK will not poll for new configs.
-func WithPollingInterval(interval time.Duration) Option {
-	return func(cp *ControlPlane) error {
-		cp.pollingInterval = interval
 		return nil
 	}
 }
