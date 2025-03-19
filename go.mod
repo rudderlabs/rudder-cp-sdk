@@ -1,6 +1,6 @@
 module github.com/rudderlabs/rudder-cp-sdk
 
-go 1.24.1
+go 1.23.4
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
