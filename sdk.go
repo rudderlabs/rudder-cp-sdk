@@ -21,6 +21,9 @@ const (
 )
 
 type ControlPlane struct {
+	Client      Client
+	AdminClient *admin.Client
+
 	baseUrl           *url.URL
 	baseUrlV2         *url.URL
 	workspaceIdentity *identity.Workspace
@@ -28,11 +31,7 @@ type ControlPlane struct {
 	adminCredentials  *identity.AdminCredentials
 
 	httpClient RequestDoer
-
-	Client      Client
-	AdminClient *admin.Client
-
-	log logger.Logger
+	log        logger.Logger
 }
 
 type Client interface {
