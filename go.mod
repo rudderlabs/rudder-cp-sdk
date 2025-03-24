@@ -1,6 +1,7 @@
 module github.com/rudderlabs/rudder-cp-sdk
 
-go 1.23.4
+go 1.23.6
+
 toolchain go1.24.1
 
 require (
