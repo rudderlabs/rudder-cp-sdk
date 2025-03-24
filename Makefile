@@ -50,7 +50,7 @@ install-tools:
 	go install github.com/golang/mock/mockgen@v1.6.0
 	go install mvdan.cc/gofumpt@latest
 	go install golang.org/x/tools/cmd/goimports@latest
-	bash ./scripts/install-golangci-lint.sh v1.62.2
+	bash ./scripts/install-golangci-lint.sh v1.64.8
 
 .PHONY: lint
 lint: fmt ## Run linters on all go files
