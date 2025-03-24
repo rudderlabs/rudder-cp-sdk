@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.2.0...v1.2.1) (2025-03-24)
+
+
+### Bug Fixes
+
+* correct struct field ordering in ControlPlane definition ([#83](https://github.com/rudderlabs/rudder-cp-sdk/issues/83)) ([c21bb4e](https://github.com/rudderlabs/rudder-cp-sdk/commit/c21bb4e7e67d454c9d7a5cce7ed9fe0519b4204d))
+
 ## [1.2.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.1.1...v1.2.0) (2025-01-14)
 
 
