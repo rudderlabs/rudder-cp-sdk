@@ -81,7 +81,7 @@ func setupWorkspaceConfigsPoller[K comparable](
 		poller.WithPollingMaxElapsedTime[K](5*time.Minute),
 		poller.WithPollingMaxRetries[K](15),
 		poller.WithPollingBackoffMultiplier[K](1.5),
-		poller.WithOnResponse[K](func(updated bool, err error) {
+		poller.WithOnResponse[K](func(_ context.Context, updated bool, err error) {
 			if err != nil {
 				// e.g. bump metric on failure
 				log.Errorn("failed to poll workspace configs", obskit.Error(err))

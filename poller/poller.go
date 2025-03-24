@@ -23,7 +23,7 @@ type WorkspaceConfigsPoller[K comparable] struct {
 	constructor func() diff.UpdateableObject[K]
 	interval    time.Duration
 	updatedAt   time.Time
-	onResponse  func(bool, error)
+	onResponse  func(context.Context, bool, error)
 	backoff     struct {
 		initialInterval time.Duration
 		maxInterval     time.Duration
@@ -78,7 +78,7 @@ func (p *WorkspaceConfigsPoller[K]) Run(ctx context.Context) {
 	// Try the first time with no delay
 	updated, err := p.poll(ctx)
 	if p.onResponse != nil {
-		p.onResponse(updated, err)
+		p.onResponse(ctx, updated, err)
 	}
 	if err != nil { // Log the error and retry with backoff later, no need to retry here
 		p.log.Errorn("failed to poll workspace configs", obskit.Error(err))
@@ -91,7 +91,7 @@ func (p *WorkspaceConfigsPoller[K]) Run(ctx context.Context) {
 		case <-time.After(p.interval):
 			updated, err := p.poll(ctx)
 			if p.onResponse != nil {
-				p.onResponse(updated, err)
+				p.onResponse(ctx, updated, err)
 			}
 			if err == nil {
 				continue
@@ -108,7 +108,7 @@ func (p *WorkspaceConfigsPoller[K]) Run(ctx context.Context) {
 				case <-time.After(delay):
 					updated, err = p.poll(ctx)
 					if p.onResponse != nil {
-						p.onResponse(updated, err)
+						p.onResponse(ctx, updated, err)
 					}
 					if err != nil {
 						p.log.Warnn("failed to poll workspace configs after delay",

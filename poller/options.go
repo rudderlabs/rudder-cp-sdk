@@ -1,6 +1,7 @@
 package poller
 
 import (
+	"context"
 	"time"
 
 	"github.com/rudderlabs/rudder-go-kit/logger"
@@ -36,6 +37,6 @@ func WithPollingBackoffMultiplier[K comparable](m float64) Option[K] {
 	return func(p *WorkspaceConfigsPoller[K]) { p.backoff.multiplier = m }
 }
 
-func WithOnResponse[K comparable](f func(bool, error)) Option[K] {
+func WithOnResponse[K comparable](f func(context.Context, bool, error)) Option[K] {
 	return func(p *WorkspaceConfigsPoller[K]) { p.onResponse = f }
 }
