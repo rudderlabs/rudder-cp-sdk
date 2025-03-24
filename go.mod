@@ -2,8 +2,6 @@ module github.com/rudderlabs/rudder-cp-sdk
 
 go 1.23.6
 
-toolchain go1.24.1
-
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/json-iterator/go v1.1.12
