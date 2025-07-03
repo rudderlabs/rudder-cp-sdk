@@ -38,11 +38,15 @@ type Updater[K comparable] struct {
 
 func (u *Updater[K]) UpdateCache(new, cache UpdateableObject[K]) (time.Time, bool, error) {
 	var (
+		countOfUpdatable int
 		atLeastOneUpdate bool
 		latestUpdatedAt  time.Time
 	)
 
 	for n := range new.Updateables() {
+		if n.Length() != 0 {
+			countOfUpdatable++
+		}
 		var (
 			found, updated bool
 			c              UpdateableList[K, UpdateableElement]
@@ -92,6 +96,10 @@ func (u *Updater[K]) UpdateCache(new, cache UpdateableObject[K]) (time.Time, boo
 		}
 	}
 
+	// if there are no updatable lists, that means that the new object is not valid or we got an empty response
+	if countOfUpdatable == 0 {
+		return time.Time{}, false, fmt.Errorf("no updateable lists found in new object")
+	}
 	if err := u.replaceNonUpdateables(new, cache); err != nil {
 		return time.Time{}, false, err
 	}

@@ -66,7 +66,15 @@ func New(options ...Option) (*ControlPlane, error) {
 
 func (cp *ControlPlane) setupClients() error {
 	if cp.httpClient == nil {
-		cp.httpClient = http.DefaultClient
+		cp.httpClient = &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 10,
+				IdleConnTimeout:     90 * time.Second,
+				DisableKeepAlives:   false,
+			},
+		}
 	}
 
 	baseClient := &base.Client{HTTPClient: cp.httpClient, BaseURL: cp.baseUrl}
