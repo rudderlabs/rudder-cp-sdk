@@ -63,9 +63,9 @@ func WithLogger(log logger.Logger) Option {
 	}
 }
 
-func WithHttpClient(httpClient RequestDoer) Option {
+func WithRequestDoer(reqDoer RequestDoer) Option {
 	return func(cp *ControlPlane) error {
-		cp.httpClient = httpClient
+		cp.httpClient = reqDoer
 		return nil
 	}
 }

@@ -187,7 +187,9 @@ func TestUpdateable(t *testing.T) {
 	response = &WorkspaceConfigs{}
 	err = stdjson.Unmarshal(fifthCall, &response)
 	require.NoError(t, err)
-	_, _, err = updater.UpdateCache(response, cache)
+	updateAfter, updated, err = updater.UpdateCache(response, cache)
+	require.Equal(t, time.Time{}, updateAfter)
+	require.False(t, updated)
 	require.Error(t, err)
 }
 
