@@ -181,6 +181,16 @@ func TestUpdateable(t *testing.T) {
 		require.Contains(t, dstDefinitions, "LINKEDIN_ADS")
 		require.Equal(t, &DestinationDefinition{Name: "LinkedIn Ads"}, dstDefinitions["LINKEDIN_ADS"])
 	}
+
+	// in the fifth call we didn't receive any updates, so the cache should remain the same, and we should receive an error
+	fifthCall := []byte(`{}`)
+	response = &WorkspaceConfigs{}
+	err = stdjson.Unmarshal(fifthCall, &response)
+	require.NoError(t, err)
+	updateAfter, updated, err = updater.UpdateCache(response, cache)
+	require.Equal(t, time.Time{}, updateAfter)
+	require.False(t, updated)
+	require.Error(t, err)
 }
 
 type WorkspaceConfigs struct {
