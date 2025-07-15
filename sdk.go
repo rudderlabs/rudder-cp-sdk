@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/rudderlabs/rudder-go-kit/httputil"
+
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/admin"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
@@ -66,15 +68,7 @@ func New(options ...Option) (*ControlPlane, error) {
 
 func (cp *ControlPlane) setupClients() error {
 	if cp.httpClient == nil {
-		cp.httpClient = &http.Client{
-			Timeout: 30 * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 10,
-				IdleConnTimeout:     90 * time.Second,
-				DisableKeepAlives:   false,
-			},
-		}
+		cp.httpClient = httputil.DefaultHttpClient()
 	}
 
 	baseClient := &base.Client{HTTPClient: cp.httpClient, BaseURL: cp.baseUrl}
