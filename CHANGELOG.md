@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.2.1...v1.2.2) (2025-07-17)
+
+
+### Bug Fixes
+
+* handle empty response in UpdateCache ([#108](https://github.com/rudderlabs/rudder-cp-sdk/issues/108)) ([fe6b940](https://github.com/rudderlabs/rudder-cp-sdk/commit/fe6b940aae15b2564b2e6d698531bc26caeb646e))
+
 ## [1.2.1](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.2.0...v1.2.1) (2025-03-24)
 
 
