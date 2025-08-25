@@ -7,7 +7,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/rudderlabs/rudder-go-kit v0.58.0
 	github.com/rudderlabs/rudder-observability-kit v0.0.4
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 )
 
 replace github.com/gocql/gocql => github.com/scylladb/gocql v1.14.2 // fix for JetBrains IDEs
