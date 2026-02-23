@@ -75,49 +75,41 @@ func NewWorkspaceConfigsPoller[K comparable](
 // Run starts polling for new workspace configs every interval.
 // It will stop polling when the context is cancelled.
 func (p *WorkspaceConfigsPoller[K]) Run(ctx context.Context) {
-	// Try the first time with no delay
-	updated, err := p.poll(ctx)
-	if p.onResponse != nil {
-		p.onResponse(ctx, updated, err)
-	}
-	if err != nil { // Log the error and retry with backoff later, no need to retry here
-		p.log.Errorn("failed to poll workspace configs", obskit.Error(err))
-	}
-
 	for {
+		_, err := backoff.Retry(ctx,
+			func() (*struct{}, error) {
+				updated, err := p.poll(ctx)
+				if p.onResponse != nil {
+					p.onResponse(ctx, updated, err)
+				}
+				return nil, err
+			},
+			backoff.WithBackOff(&backoff.ExponentialBackOff{
+				InitialInterval:     p.backoff.initialInterval,
+				RandomizationFactor: backoff.DefaultRandomizationFactor,
+				Multiplier:          p.backoff.multiplier,
+				MaxInterval:         p.backoff.maxInterval,
+			}),
+			backoff.WithMaxTries(uint(p.backoff.maxRetries)+1),
+			backoff.WithMaxElapsedTime(p.backoff.maxElapsedTime),
+			backoff.WithNotify(func(err error, d time.Duration) {
+				p.log.Warnn("retrying workspace config poll after backoff delay",
+					logger.NewDurationField("delay", d),
+					obskit.Error(err),
+				)
+			}),
+		)
+		if err != nil {
+			p.log.Errorn("failed to poll workspace configs after backoff",
+				logger.NewDurationField("backoff", p.backoff.maxInterval),
+				obskit.Error(err),
+			)
+		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(p.interval):
-			_, err = backoff.Retry(ctx,
-				func() (*struct{}, error) {
-					updated, err = p.poll(ctx)
-					if p.onResponse != nil {
-						p.onResponse(ctx, updated, err)
-					}
-					return nil, err
-				},
-				backoff.WithBackOff(&backoff.ExponentialBackOff{
-					InitialInterval:     p.backoff.initialInterval,
-					RandomizationFactor: backoff.DefaultRandomizationFactor,
-					Multiplier:          p.backoff.multiplier,
-					MaxInterval:         p.backoff.maxInterval,
-				}),
-				backoff.WithMaxTries(uint(p.backoff.maxRetries)+1),
-				backoff.WithMaxElapsedTime(p.backoff.maxElapsedTime),
-				backoff.WithNotify(func(err error, d time.Duration) {
-					p.log.Warnn("retrying workspace config poll after backoff delay",
-						logger.NewDurationField("delay", d),
-						obskit.Error(err),
-					)
-				}),
-			)
-			if err != nil {
-				p.log.Errorn("failed to poll workspace configs after backoff",
-					logger.NewDurationField("backoff", p.backoff.maxInterval),
-					obskit.Error(err),
-				)
-			}
+
 		}
 	}
 }
