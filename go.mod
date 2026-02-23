@@ -3,7 +3,7 @@ module github.com/rudderlabs/rudder-cp-sdk
 go 1.25.7
 
 require (
-	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/rudderlabs/rudder-go-kit v0.72.3
 	github.com/rudderlabs/rudder-observability-kit v0.0.6
 	github.com/stretchr/testify v1.11.1
