@@ -58,21 +58,21 @@ func TestIncrementalUpdates(t *testing.T) {
 		case 0: // 1st request, return file content as is
 			responseBody = responseBodyFromFile
 		case 1: // 2nd request, return new workspace, no updates for the other 2
-			responseBody = []byte(fmt.Sprintf(`{
+			responseBody = fmt.Appendf(nil, `{
 				"workspaces": {
 					"dummy":{"updatedAt":%q,"libraries":[{"versionId":"foo"},{"versionId":"bar"}]},
 					"2hCBi02C8xYS8Rsy1m9bJjTlKy6":null,
 					"2bVMV2JiAJe42OXZrzyvJI75v0N":null
 				}
-			}`, updatedAfterTime.Add(time.Minute).Format(updatedAfterTimeFormat)))
+			}`, updatedAfterTime.Add(time.Minute).Format(updatedAfterTimeFormat))
 		case 2: // 3rd request, return updated dummy workspace, no updates for the other 2
-			responseBody = []byte(fmt.Sprintf(`{
+			responseBody = fmt.Appendf(nil, `{
 				"workspaces": {
 					"dummy":{"updatedAt":%q,"libraries":[{"versionId":"baz"}]},
 					"2hCBi02C8xYS8Rsy1m9bJjTlKy6":null,
 					"2bVMV2JiAJe42OXZrzyvJI75v0N":null
 				}
-			}`, updatedAfterTime.Add(time.Minute).Format(updatedAfterTimeFormat)))
+			}`, updatedAfterTime.Add(time.Minute).Format(updatedAfterTimeFormat))
 		case 3, 4: // 4th and 5th request, delete the dummy workspace
 			responseBody = []byte(`{
 				"workspaces": {

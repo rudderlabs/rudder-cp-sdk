@@ -22,7 +22,7 @@ type DGSourceTrackingPlan struct {
 }
 
 type DGSourceTrackingPlanOptions struct {
-	AllowUnplannedEvents interface{}            `json:"allowUnplannedEvents"`
-	SendViolatedEventsTo string                 `json:"sendViolatedEventsTo"`
-	AJVOptions           map[string]interface{} `json:"ajvOptions"`
+	AllowUnplannedEvents any            `json:"allowUnplannedEvents"`
+	SendViolatedEventsTo string         `json:"sendViolatedEventsTo"`
+	AJVOptions           map[string]any `json:"ajvOptions"`
 }
