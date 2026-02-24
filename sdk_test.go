@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
-	"github.com/rudderlabs/rudder-go-kit/logger"
 	"github.com/rudderlabs/rudder-go-kit/testhelper/httptest"
 )
 
@@ -96,7 +95,6 @@ func TestIncrementalUpdates(t *testing.T) {
 
 	cpSDK, err := New(
 		WithBaseUrl(ts.URL),
-		WithLogger(logger.NOP),
 		WithNamespaceIdentity(namespace, secret),
 	)
 	require.NoError(t, err)

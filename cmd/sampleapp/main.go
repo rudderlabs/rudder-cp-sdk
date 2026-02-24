@@ -10,7 +10,6 @@ import (
 
 	cpsdk "github.com/rudderlabs/rudder-cp-sdk"
 	"github.com/rudderlabs/rudder-cp-sdk/diff"
-	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-cp-sdk/poller"
 	"github.com/rudderlabs/rudder-go-kit/config"
@@ -33,17 +32,14 @@ func main() {
 }
 
 // setupControlPlaneSDK creates a new SDK instance using the environment variables
-func setupControlPlaneSDK(log logger.Logger) (*cpsdk.ControlPlane, error) {
+func setupControlPlaneSDK() (*cpsdk.ControlPlane, error) {
 	apiUrl := os.Getenv("CPSDK_API_URL")
 	workspaceToken := os.Getenv("CPSDK_WORKSPACE_TOKEN")
 	namespace := os.Getenv("CPSDK_NAMESPACE")
 	hostedSecret := os.Getenv("CPSDK_HOSTED_SECRET")
-	adminUsername := os.Getenv("CPSDK_ADMIN_USERNAME")
-	adminPassword := os.Getenv("CPSDK_ADMIN_PASSWORD")
 
 	options := []cpsdk.Option{
 		cpsdk.WithBaseUrl(apiUrl),
-		cpsdk.WithLogger(log),
 	}
 
 	if namespace != "" {
@@ -51,19 +47,6 @@ func setupControlPlaneSDK(log logger.Logger) (*cpsdk.ControlPlane, error) {
 	} else {
 		options = append(options, cpsdk.WithWorkspaceIdentity(workspaceToken))
 	}
-
-	if adminUsername != "" || adminPassword != "" {
-		if adminUsername == "" || adminPassword == "" {
-			return nil, fmt.Errorf("both admin username and password must be provided")
-		}
-
-		adminCredentials := &identity.AdminCredentials{
-			AdminUsername: adminUsername,
-			AdminPassword: adminPassword,
-		}
-		options = append(options, cpsdk.WithAdminCredentials(adminCredentials))
-	}
-
 	return cpsdk.New(options...)
 }
 
@@ -98,7 +81,7 @@ func setupClientWithPoller(
 	cacheMu *sync.RWMutex,
 	log logger.Logger,
 ) (func(context.Context), error) {
-	sdk, err := setupControlPlaneSDK(log)
+	sdk, err := setupControlPlaneSDK()
 	if err != nil {
 		return nil, fmt.Errorf("error setting up control plane sdk: %v", err)
 	}

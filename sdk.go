@@ -10,30 +10,24 @@ import (
 	"github.com/rudderlabs/rudder-go-kit/httputil"
 
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
-	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/admin"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/namespace"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/workspace"
-	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
 const (
-	defaultBaseUrl   = "https://api.rudderstack.com"
-	defaultBaseUrlV2 = "https://dp.api.rudderstack.com"
+	defaultWorkspaceIdentityBaseURL = "https://api.rudderstack.com"
+	defaultNamespaceIdentityBaseURL = "https://dp.api.rudderstack.com"
 )
 
 type ControlPlane struct {
-	Client      Client
-	AdminClient *admin.Client
-
-	baseUrl           *url.URL
-	baseUrlV2         *url.URL
-	workspaceIdentity *identity.Workspace
-	namespaceIdentity *identity.Namespace
-	adminCredentials  *identity.AdminCredentials
-
-	httpClient RequestDoer
-	log        logger.Logger
+	Client
+	config struct {
+		baseUrl           *url.URL
+		workspaceIdentity *identity.Workspace
+		namespaceIdentity *identity.Namespace
+		httpClient        RequestDoer
+	}
 }
 
 type Client interface {
@@ -45,63 +39,36 @@ type RequestDoer interface {
 }
 
 func New(options ...Option) (*ControlPlane, error) {
-	baseUrl, _ := url.Parse(defaultBaseUrl)
-	baseUrlV2, _ := url.Parse(defaultBaseUrlV2)
-	cp := &ControlPlane{
-		baseUrl:   baseUrl,
-		baseUrlV2: baseUrlV2,
-		log:       logger.NOP,
-	}
-
+	cp := &ControlPlane{}
 	for _, option := range options {
 		if err := option(cp); err != nil {
 			return nil, err
 		}
 	}
-
-	if err := cp.setupClients(); err != nil {
-		return nil, err
+	if cp.config.httpClient == nil {
+		cp.config.httpClient = httputil.DefaultHttpClient()
 	}
-
-	return cp, nil
-}
-
-func (cp *ControlPlane) setupClients() error {
-	if cp.httpClient == nil {
-		cp.httpClient = httputil.DefaultHttpClient()
-	}
-
-	baseClient := &base.Client{HTTPClient: cp.httpClient, BaseURL: cp.baseUrl}
-	baseClientV2 := &base.Client{HTTPClient: cp.httpClient, BaseURL: cp.baseUrlV2}
-
-	// set admin client
-	if cp.adminCredentials != nil {
-		cp.AdminClient = &admin.Client{
-			Client:   baseClient,
-			Username: cp.adminCredentials.AdminUsername,
-			Password: cp.adminCredentials.AdminPassword,
-		}
-	}
-
 	// set client based on identity
-	if cp.workspaceIdentity != nil {
-		cp.Client = &workspace.Client{
-			Client:   baseClient,
-			Identity: cp.workspaceIdentity,
+	if cp.config.workspaceIdentity != nil {
+		baseUrl := cp.config.baseUrl
+		if baseUrl == nil {
+			baseUrl, _ = url.Parse(defaultWorkspaceIdentityBaseURL)
 		}
-	} else if cp.namespaceIdentity != nil {
+		cp.Client = &workspace.Client{
+			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl},
+			Identity: cp.config.workspaceIdentity,
+		}
+	} else if cp.config.namespaceIdentity != nil {
+		baseUrl := cp.config.baseUrl
+		if baseUrl == nil {
+			baseUrl, _ = url.Parse(defaultNamespaceIdentityBaseURL)
+		}
 		cp.Client = &namespace.Client{
-			Client:   baseClientV2,
-			Identity: cp.namespaceIdentity,
+			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl},
+			Identity: cp.config.namespaceIdentity,
 		}
 	} else {
-		return fmt.Errorf("workspace or namespace identity must be set")
+		return nil, fmt.Errorf("workspace or namespace identity must be set")
 	}
-
-	return nil
-}
-
-// GetWorkspaceConfigs returns the latest workspace configs.
-func (cp *ControlPlane) GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error {
-	return cp.Client.GetWorkspaceConfigs(ctx, object, updatedAfter)
+	return cp, nil
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/rudderlabs/rudder-go-kit/config"
-	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
 func BenchmarkGetWorkspaceConfigs(b *testing.B) {
@@ -23,7 +22,6 @@ func BenchmarkGetWorkspaceConfigs(b *testing.B) {
 
 	cpSDK, err := New(
 		WithBaseUrl(baseURL),
-		WithLogger(logger.NOP),
 		WithNamespaceIdentity(namespace, identity),
 	)
 	require.NoError(b, err)

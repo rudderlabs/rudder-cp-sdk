@@ -1,10 +1,5 @@
 package identity
 
-type AdminCredentials struct {
-	AdminUsername string
-	AdminPassword string
-}
-
 type Workspace struct {
 	WorkspaceToken string
 }
