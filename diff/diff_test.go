@@ -1,13 +1,15 @@
 package diff
 
 import (
-	stdjson "encoding/json"
+	"encoding/json"
 	"iter"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/rudderlabs/rudder-go-kit/jsonrs"
 )
 
 func TestUpdateable(t *testing.T) {
@@ -16,7 +18,7 @@ func TestUpdateable(t *testing.T) {
 	require.NoError(t, err)
 
 	var response UpdateableObject[string] = &WorkspaceConfigs{}
-	err = stdjson.Unmarshal(firstCall, &response)
+	err = jsonrs.Unmarshal(firstCall, &response)
 	require.NoError(t, err)
 	{
 		workspaces := getWorkspaces(response)
@@ -61,7 +63,7 @@ func TestUpdateable(t *testing.T) {
 	require.NoError(t, err)
 
 	response = &WorkspaceConfigs{}
-	err = stdjson.Unmarshal(secondCall, &response)
+	err = jsonrs.Unmarshal(secondCall, &response)
 	require.NoError(t, err)
 	{
 		workspaces := getWorkspaces(response)
@@ -102,7 +104,7 @@ func TestUpdateable(t *testing.T) {
 	require.NoError(t, err)
 
 	response = &WorkspaceConfigs{}
-	err = stdjson.Unmarshal(thirdCall, &response)
+	err = jsonrs.Unmarshal(thirdCall, &response)
 	require.NoError(t, err)
 	{
 		workspaces := getWorkspaces(response)
@@ -138,7 +140,7 @@ func TestUpdateable(t *testing.T) {
 	require.NoError(t, err)
 
 	response = &WorkspaceConfigs{}
-	err = stdjson.Unmarshal(fourthCall, &response)
+	err = jsonrs.Unmarshal(fourthCall, &response)
 	require.NoError(t, err)
 	{
 		workspaces := getWorkspaces(response)
@@ -185,7 +187,7 @@ func TestUpdateable(t *testing.T) {
 	// in the fifth call we didn't receive any updates, so the cache should remain the same, and we should receive an error
 	fifthCall := []byte(`{}`)
 	response = &WorkspaceConfigs{}
-	err = stdjson.Unmarshal(fifthCall, &response)
+	err = jsonrs.Unmarshal(fifthCall, &response)
 	require.NoError(t, err)
 	updateAfter, updated, err = updater.UpdateCache(response, cache)
 	require.Equal(t, time.Time{}, updateAfter)
@@ -256,12 +258,12 @@ func (wc *WorkspaceConfig) GetUpdatedAt() time.Time { return wc.UpdatedAt }
 func (wc *WorkspaceConfig) IsNil() bool             { return wc == nil }
 
 type Source struct {
-	Name           string             `json:"name"`
-	WriteKey       string             `json:"writeKey"`
-	Enabled        bool               `json:"enabled"`
-	DefinitionName string             `json:"sourceDefinitionName"`
-	Config         stdjson.RawMessage `json:"config"`
-	Deleted        bool               `json:"deleted"`
+	Name           string          `json:"name"`
+	WriteKey       string          `json:"writeKey"`
+	Enabled        bool            `json:"enabled"`
+	DefinitionName string          `json:"sourceDefinitionName"`
+	Config         json.RawMessage `json:"config"`
+	Deleted        bool            `json:"deleted"`
 }
 
 type Destination struct {

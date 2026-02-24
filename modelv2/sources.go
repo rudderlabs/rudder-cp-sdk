@@ -19,11 +19,11 @@ type Source struct {
 }
 
 type SourceDefinition struct {
-	Name        string                 `json:"name"`
-	DisplayName string                 `json:"displayName"`
-	Category    string                 `json:"category"`
-	Options     map[string]interface{} `json:"options"`
-	Config      map[string]interface{} `json:"config"`
+	Name        string         `json:"name"`
+	DisplayName string         `json:"displayName"`
+	Category    string         `json:"category"`
+	Options     map[string]any `json:"options"`
+	Config      map[string]any `json:"config"`
 	// TODO: consider adding the following fields
 	// CreatedAt time.Time `json:"createdAt"`
 	// UpdatedAt time.Time `json:"updatedAt"`

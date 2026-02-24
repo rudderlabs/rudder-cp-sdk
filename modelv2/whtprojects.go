@@ -1,9 +1,9 @@
 package modelv2
 
 type WHTProjectConfig struct { // TODO: these should not be arbitrary maps
-	Resources       []string               `json:"resources"`
-	Schedule        map[string]interface{} `json:"schedule"`
-	RetentionPolicy map[string]interface{} `json:"retentionPolicy"`
+	Resources       []string       `json:"resources"`
+	Schedule        map[string]any `json:"schedule"`
+	RetentionPolicy map[string]any `json:"retentionPolicy"`
 }
 
 type WHTProject struct {

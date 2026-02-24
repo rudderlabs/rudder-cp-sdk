@@ -7,13 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
-
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
+	"github.com/rudderlabs/rudder-go-kit/jsonrs"
 )
-
-var json = jsoniter.ConfigFastest
 
 type Client struct {
 	*base.Client
@@ -49,7 +46,7 @@ func (c *Client) GetWorkspaceConfigs(ctx context.Context, object any, updatedAft
 
 	defer func() { _ = reader.Close() }()
 
-	if err = json.NewDecoder(reader).Decode(object); err != nil {
+	if err = jsonrs.NewDecoder(reader).Decode(object); err != nil {
 		return fmt.Errorf("failed to decode workspace configs: %w", err)
 	}
 
