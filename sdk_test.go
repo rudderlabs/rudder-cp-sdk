@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rudderlabs/rudder-cp-sdk/diff"
-
 	"github.com/stretchr/testify/require"
 
-	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-go-kit/testhelper/httptest"
+
+	"github.com/rudderlabs/rudder-cp-sdk/diff"
+	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 )
 
 const updatedAfterTimeFormat = "2006-01-02T15:04:05.000Z"

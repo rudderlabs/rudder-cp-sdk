@@ -7,9 +7,10 @@ import (
 
 	"github.com/cenkalti/backoff/v5"
 
-	"github.com/rudderlabs/rudder-cp-sdk/diff"
 	"github.com/rudderlabs/rudder-go-kit/logger"
 	obskit "github.com/rudderlabs/rudder-observability-kit/go/labels"
+
+	"github.com/rudderlabs/rudder-cp-sdk/diff"
 )
 
 type WorkspaceConfigsGetter[K comparable] func(ctx context.Context, l diff.UpdateableObject[K], updatedAfter time.Time) error

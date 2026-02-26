@@ -7,9 +7,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rudderlabs/rudder-go-kit/jsonrs"
+
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
-	"github.com/rudderlabs/rudder-go-kit/jsonrs"
 )
 
 type Client struct {
