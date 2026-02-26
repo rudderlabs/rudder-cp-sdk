@@ -10,9 +10,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/rudderlabs/rudder-go-kit/logger"
+
 	"github.com/rudderlabs/rudder-cp-sdk/diff"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
-	"github.com/rudderlabs/rudder-go-kit/logger"
 )
 
 func TestPollerNew(t *testing.T) {
