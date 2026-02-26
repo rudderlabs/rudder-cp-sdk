@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.3.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.2.2...v1.3.0) (2026-02-26)
+
+
+### Features
+
+* modernize project ([#158](https://github.com/rudderlabs/rudder-cp-sdk/issues/158)) ([593ffcc](https://github.com/rudderlabs/rudder-cp-sdk/commit/593ffccb7ed9b440c8b284400f6377630529817b))
+
+
+### Bug Fixes
+
+* release please missing required manifest config: .github/release-please-config.json ([#159](https://github.com/rudderlabs/rudder-cp-sdk/issues/159)) ([cde7f74](https://github.com/rudderlabs/rudder-cp-sdk/commit/cde7f7404688aa27ae52cb9a909530edb7676724))
+
+
+### Miscellaneous
+
+* **deps:** bump amannn/action-semantic-pull-request from 5 to 6 ([#119](https://github.com/rudderlabs/rudder-cp-sdk/issues/119)) ([82e4c97](https://github.com/rudderlabs/rudder-cp-sdk/commit/82e4c9784a2cd62fc23f1825f3f701ce7d839651))
+* replace goimports with gci ([#163](https://github.com/rudderlabs/rudder-cp-sdk/issues/163)) ([d5043b3](https://github.com/rudderlabs/rudder-cp-sdk/commit/d5043b311e458c4b623b72569ec8c8401ba90978))
+
 ## [1.2.2](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.2.1...v1.2.2) (2025-07-17)
 
 
