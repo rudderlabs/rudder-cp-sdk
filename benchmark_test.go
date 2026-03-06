@@ -12,9 +12,9 @@ import (
 
 func BenchmarkGetWorkspaceConfigs(b *testing.B) {
 	conf := config.New()
-	baseURL := conf.GetString("BASE_URL", "https://dp.api.rudderstack.com/")
-	namespace := conf.GetString("NAMESPACE", "free-us-1")
-	identity := conf.GetString("IDENTITY", "")
+	baseURL := conf.GetStringVar("https://dp.api.rudderstack.com/", "BASE_URL")
+	namespace := conf.GetStringVar("free-us-1", "NAMESPACE")
+	identity := conf.GetStringVar("", "IDENTITY")
 	if identity == "" {
 		b.Skip("IDENTITY is not set")
 		return

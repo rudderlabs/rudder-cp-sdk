@@ -1,10 +1,10 @@
 module github.com/rudderlabs/rudder-cp-sdk
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3
-	github.com/rudderlabs/rudder-go-kit v0.72.3
+	github.com/rudderlabs/rudder-go-kit v0.73.0
 	github.com/rudderlabs/rudder-observability-kit v0.0.6
 	github.com/stretchr/testify v1.11.1
 )

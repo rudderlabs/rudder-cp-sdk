@@ -1,13 +1,11 @@
 package base
 
 import (
-	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/rudderlabs/rudder-go-kit/httputil"
 )
@@ -23,67 +21,35 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func (c *Client) Url(path string, updatedAfter time.Time) string {
-	v := c.BaseURL.JoinPath(path)
-
-	if !updatedAfter.IsZero() {
-		queryValues := v.Query()
-		queryValues.Add("updatedAfter", updatedAfter.Format(updatedAfterTimeFormat))
-		v.RawQuery = queryValues.Encode()
-	}
-
-	return v.String()
+func (c *Client) Url(path string) string {
+	return c.BaseURL.JoinPath(path).String()
 }
 
-func (c *Client) Get(ctx context.Context, path string, updatedAfter time.Time) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", c.Url(path, updatedAfter), nil)
+func (c *Client) Get(ctx context.Context, path string, opts ...QueryOption) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.Url(path), http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, &PermanenentError{Err: fmt.Errorf("creating request: %w", err)}
 	}
-
+	if len(opts) > 0 {
+		q := req.URL.Query()
+		for _, opt := range opts {
+			opt(q)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept-Encoding", "gzip")
-
 	return req, nil
 }
 
+// Send sends the request and returns the response body if the status code is 200 OK, otherwise returns an error.
 func (c *Client) Send(req *http.Request) (io.ReadCloser, error) {
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
-
 	if res.StatusCode != http.StatusOK {
 		defer func() { httputil.CloseResponse(res) }()
-		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		return nil, NewUnexpectedStatusCodeError(res)
 	}
-
-	if res.Header.Get("Content-Encoding") == "gzip" {
-		gzipRdr, err := gzip.NewReader(res.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
-		}
-		return &gzipReadCloser{
-			gzipReader: gzipRdr,
-			resBody:    res.Body,
-		}, nil
-	}
-
 	return res.Body, nil
-}
-
-// gzipReadCloser is a ReadCloser that closes both the gzip reader and the response body.
-// unfortunately the gzip.Reader does not close the underlying reader when it is closed.
-type gzipReadCloser struct {
-	gzipReader io.ReadCloser
-	resBody    io.ReadCloser
-}
-
-func (g *gzipReadCloser) Read(p []byte) (n int, err error) {
-	return g.gzipReader.Read(p)
-}
-
-func (g *gzipReadCloser) Close() error {
-	defer func() { _ = g.resBody.Close() }()
-	return g.gzipReader.Close()
 }
