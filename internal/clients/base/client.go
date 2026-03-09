@@ -25,14 +25,14 @@ func (c *Client) Url(path string) string {
 	return c.BaseURL.JoinPath(path).String()
 }
 
-func (c *Client) Get(ctx context.Context, path string, opts ...QueryOption) (*http.Request, error) {
+func (c *Client) Get(ctx context.Context, path string, queryOpts ...QueryOption) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.Url(path), http.NoBody)
 	if err != nil {
 		return nil, &PermanenentError{Err: fmt.Errorf("creating request: %w", err)}
 	}
-	if len(opts) > 0 {
+	if len(queryOpts) > 0 {
 		q := req.URL.Query()
-		for _, opt := range opts {
+		for _, opt := range queryOpts {
 			opt(q)
 		}
 		req.URL.RawQuery = q.Encode()
@@ -41,7 +41,7 @@ func (c *Client) Get(ctx context.Context, path string, opts ...QueryOption) (*ht
 	return req, nil
 }
 
-// Send sends the request and returns the response body if the status code is 200 OK, otherwise returns an error.
+// Send the request and return the response body if the status code is 200 OK, otherwise return an error.
 func (c *Client) Send(req *http.Request) (io.ReadCloser, error) {
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
