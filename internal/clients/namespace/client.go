@@ -55,8 +55,8 @@ func (c *Client) GetNamespaceWorkspaces(ctx context.Context) ([]string, error) {
 	return res.Data, nil
 }
 
-func (c *Client) GetWithAuth(ctx context.Context, path string, opts ...base.QueryOption) (*http.Request, error) {
-	req, err := c.Get(ctx, path, opts...)
+func (c *Client) GetWithAuth(ctx context.Context, path string, queryOpts ...base.QueryOption) (*http.Request, error) {
+	req, err := c.Get(ctx, path, queryOpts...)
 	if err != nil {
 		return nil, err
 	}

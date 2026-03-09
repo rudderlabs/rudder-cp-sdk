@@ -19,8 +19,8 @@ type Client struct {
 	Identity *identity.Workspace
 }
 
-func (c *Client) Get(ctx context.Context, path string, opts ...base.QueryOption) (*http.Request, error) {
-	req, err := c.Client.Get(ctx, path, opts...)
+func (c *Client) Get(ctx context.Context, path string, queryOpts ...base.QueryOption) (*http.Request, error) {
+	req, err := c.Client.Get(ctx, path, queryOpts...)
 	if err != nil {
 		return nil, err
 	}
