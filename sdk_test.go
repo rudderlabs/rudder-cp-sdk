@@ -1,6 +1,7 @@
 package cpsdk
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
 	"net/http"
@@ -89,7 +90,14 @@ func TestIncrementalUpdates(t *testing.T) {
 			responseBody = responseBodyFromFile
 		}
 
-		_, _ = w.Write(responseBody)
+		require.Equal(t, "gzip", r.Header.Get("Accept-Encoding"))
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer func() {
+			require.NoError(t, gz.Close())
+		}()
+		_, err = gz.Write(responseBody)
+		require.NoError(t, err)
 	}))
 	defer ts.Close()
 
@@ -202,6 +210,73 @@ func TestIncrementalUpdates(t *testing.T) {
 	expectedUpdatedAfter, err = time.Parse(updatedAfterTimeFormat, "2024-11-27T20:15:30.647Z")
 	require.NoError(t, err)
 	require.Equal(t, receivedUpdatedAfter[4], expectedUpdatedAfter, updatedAfterTimeFormat)
+}
+
+func TestGetNamespaceWorkspaces(t *testing.T) {
+	t.Run("workspace identity", func(t *testing.T) {
+		cpSDK, err := New(
+			WithBaseUrl("http://localhost"),
+			WithWorkspaceIdentity("token"),
+		)
+		require.NoError(t, err)
+
+		_, err = cpSDK.GetNamespaceWorkspaces(context.Background())
+		require.ErrorIs(t, err, ErrUnsupportedOperation)
+	})
+
+	t.Run("namespace identity", func(t *testing.T) {
+		var (
+			namespace = "test-namespace"
+			secret    = "test-secret"
+		)
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, _, ok := r.BasicAuth()
+			require.True(t, ok)
+			require.Equal(t, secret, user)
+
+			require.Equal(t, "/configuration/v2/namespaces/"+namespace+"/workspace-ids", r.URL.Path)
+
+			responseBody := []byte(`{"data": ["ws1", "ws2", "ws3"]}`)
+			require.Equal(t, "gzip", r.Header.Get("Accept-Encoding"))
+			w.Header().Set("Content-Encoding", "gzip")
+			gz := gzip.NewWriter(w)
+			defer gz.Close()
+			_, err := gz.Write(responseBody)
+			require.NoError(t, err)
+			require.NoError(t, gz.Close())
+			_, err = w.Write(responseBody)
+			require.NoError(t, err)
+		}))
+		defer ts.Close()
+
+		cpSDK, err := New(
+			WithBaseUrl(ts.URL),
+			WithNamespaceIdentity(namespace, secret),
+		)
+		require.NoError(t, err)
+
+		workspaceIDs, err := cpSDK.GetNamespaceWorkspaces(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, []string{"ws1", "ws2", "ws3"}, workspaceIDs)
+	})
+
+	t.Run("invalid response code", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer ts.Close()
+		cpSDK, err := New(
+			WithBaseUrl(ts.URL),
+			WithNamespaceIdentity("ns", "secret"),
+		)
+		require.NoError(t, err)
+		_, err = cpSDK.GetNamespaceWorkspaces(context.Background())
+		require.Error(t, err)
+		var unexpectedStatusErr *UnexpectedStatusCodeError
+		require.ErrorAs(t, err, &unexpectedStatusErr)
+		require.Equal(t, http.StatusInternalServerError, unexpectedStatusErr.StatusCode)
+	})
 }
 
 func getLatestUpdatedAt() func(list diff.UpdateableObject[string]) (time.Time, time.Time) {

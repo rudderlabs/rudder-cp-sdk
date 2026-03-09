@@ -30,9 +30,16 @@ type ControlPlane struct {
 	}
 }
 
-type Client interface {
-	GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error
-}
+type (
+	Client interface {
+		// GetWorkspaceConfigs decodes the workspace configs in the provided object that were updated after the specified time.
+		GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error
+
+		// GetNamespaceWorkspaces returns the list of workspace IDs under the namespace.
+		// This is only applicable for Namespace Identity and will return an error for Workspace Identity.
+		GetNamespaceWorkspaces(ctx context.Context) (workspaceIDs []string, err error)
+	}
+)
 
 type RequestDoer interface {
 	Do(req *http.Request) (*http.Response, error)

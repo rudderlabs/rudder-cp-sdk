@@ -19,8 +19,8 @@ type Client struct {
 	Identity *identity.Workspace
 }
 
-func (c *Client) Get(ctx context.Context, path string, updatedAfter time.Time) (*http.Request, error) {
-	req, err := c.Client.Get(ctx, path, updatedAfter)
+func (c *Client) Get(ctx context.Context, path string, queryOpts ...base.QueryOption) (*http.Request, error) {
+	req, err := c.Client.Get(ctx, path, queryOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (c *Client) Get(ctx context.Context, path string, updatedAfter time.Time) (
 }
 
 func (c *Client) getWorkspaceConfigsReader(ctx context.Context, updatedAfter time.Time) (io.ReadCloser, error) {
-	req, err := c.Get(ctx, "/data-plane/v2/workspaceConfig", updatedAfter)
+	req, err := c.Get(ctx, "/data-plane/v2/workspaceConfig", base.WithUpdatedAfter(updatedAfter))
 	if err != nil {
 		return nil, err
 	}
@@ -52,4 +52,8 @@ func (c *Client) GetWorkspaceConfigs(ctx context.Context, object any, updatedAft
 	}
 
 	return nil
+}
+
+func (c *Client) GetNamespaceWorkspaces(ctx context.Context) (workspaceIDs []string, err error) {
+	return nil, base.ErrUnsupportedOperation
 }
