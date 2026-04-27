@@ -6,6 +6,10 @@ on:
       - edited
       - reopened
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   enforce:
     runs-on: ubuntu-latest
