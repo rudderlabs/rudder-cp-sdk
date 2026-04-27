@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.1](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.3.0...v1.3.1) (2026-04-27)
+
+
+### Bug Fixes
+
+* **vuln:** pin and bump action refs (SEC-171) ([#178](https://github.com/rudderlabs/rudder-cp-sdk/issues/178)) ([087c96b](https://github.com/rudderlabs/rudder-cp-sdk/commit/087c96b1f00228cb88dee7e3637b1ca46978d3ac))
+
+
+### Miscellaneous
+
+* **vuln:** scope workflow permissions to least privilege (SEC-167) ([#185](https://github.com/rudderlabs/rudder-cp-sdk/issues/185)) ([bf95a89](https://github.com/rudderlabs/rudder-cp-sdk/commit/bf95a891d4f1601999278b40bb4a04c583dae8ad))
+
 ## [1.3.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.2.2...v1.3.0) (2026-03-09)
 
 
