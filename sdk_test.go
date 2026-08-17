@@ -279,6 +279,69 @@ func TestGetNamespaceWorkspaces(t *testing.T) {
 	})
 }
 
+func TestSecrets(t *testing.T) {
+	newServerCapturingSecrets := func(t *testing.T, secrets *[]string) *httptest.Server {
+		t.Helper()
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			*secrets = r.URL.Query()["secrets"]
+			_, err := w.Write([]byte(`{"workspaces":{}}`))
+			require.NoError(t, err)
+		}))
+		t.Cleanup(ts.Close)
+		return ts
+	}
+
+	t.Run("namespace identity", func(t *testing.T) {
+		for _, tc := range []struct {
+			name     string
+			options  []Option
+			expected []string
+		}{
+			{name: "not set, control plane default applies", expected: nil},
+			{name: "embed", options: []Option{WithSecrets(SecretsEmbed)}, expected: []string{"embed"}},
+			{name: "omit", options: []Option{WithSecrets(SecretsOmit)}, expected: []string{"omit"}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				var receivedSecrets []string
+				ts := newServerCapturingSecrets(t, &receivedSecrets)
+
+				cpSDK, err := New(append([]Option{
+					WithBaseUrl(ts.URL),
+					WithNamespaceIdentity("test-namespace", "test-secret"),
+				}, tc.options...)...)
+				require.NoError(t, err)
+
+				require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+				require.Equal(t, tc.expected, receivedSecrets)
+			})
+		}
+	})
+
+	t.Run("workspace identity", func(t *testing.T) {
+		var receivedSecrets []string
+		ts := newServerCapturingSecrets(t, &receivedSecrets)
+
+		cpSDK, err := New(
+			WithBaseUrl(ts.URL),
+			WithWorkspaceIdentity("token"),
+			WithSecrets(SecretsEmbed),
+		)
+		require.NoError(t, err)
+
+		require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+		require.Equal(t, []string{"embed"}, receivedSecrets)
+	})
+
+	t.Run("invalid value", func(t *testing.T) {
+		_, err := New(
+			WithBaseUrl("http://localhost"),
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithSecrets("invalid"),
+		)
+		require.ErrorContains(t, err, `invalid secrets option: "invalid"`)
+	})
+}
+
 func getLatestUpdatedAt() func(list diff.UpdateableObject[string]) (time.Time, time.Time) {
 	var latestUpdatedAt time.Time
 	return func(obj diff.UpdateableObject[string]) (time.Time, time.Time) {

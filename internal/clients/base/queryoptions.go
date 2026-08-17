@@ -14,3 +14,13 @@ func WithUpdatedAfter(t time.Time) QueryOption {
 		}
 	}
 }
+
+// WithSecrets controls whether account secrets are embedded in the response or omitted.
+// An empty value leaves the parameter out of the request, letting the control plane apply its default.
+func WithSecrets(s string) QueryOption {
+	return func(q url.Values) {
+		if s != "" {
+			q.Add("secrets", s)
+		}
+	}
+}
