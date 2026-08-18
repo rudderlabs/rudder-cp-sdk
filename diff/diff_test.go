@@ -184,10 +184,42 @@ func TestUpdateable(t *testing.T) {
 		require.Equal(t, &DestinationDefinition{Name: "LinkedIn Ads"}, dstDefinitions["LINKEDIN_ADS"])
 	}
 
-	// in the fifth call we didn't receive any updates, so the cache should remain the same, and we should receive an error
-	fifthCall := []byte(`{}`)
+	// in the fifth call workspace1 is not updated and workspace3 is deleted, i.e. the only change is a removal.
+	fifthCall, err := os.ReadFile("./testdata/call_05.json")
+	require.NoError(t, err)
+
 	response = &WorkspaceConfigs{}
 	err = jsonrs.Unmarshal(fifthCall, &response)
+	require.NoError(t, err)
+	{
+		workspaces := getWorkspaces(response)
+		require.Len(t, workspaces, 1)
+		require.Contains(t, workspaces, "workspace1")
+		require.NotContains(t, workspaces, "workspace3")
+		require.Nil(t, workspaces["workspace1"])
+	}
+
+	updateAfter, updated, err = updater.UpdateCache(response, cache)
+	require.NoError(t, err)
+	require.True(t, updated, "a removal should be reported as an update")
+	// no element was updated, thus updatedAt should remain the one of the previous call
+	require.Equal(t, time.Date(2021, 9, 1, 6, 6, 8, 0, time.UTC), updateAfter)
+	{
+		workspaces := getWorkspaces(cache)
+		require.Len(t, workspaces, 1, "the deleted workspace should have been removed from the cache")
+		require.Contains(t, workspaces, "workspace1")
+		require.NotContains(t, workspaces, "workspace3")
+		require.Equal(t, goldenWorkspace1, workspaces["workspace1"])
+		srcDefinitions := getSourceDefinitions(cache)
+		require.Len(t, srcDefinitions, 2)
+		dstDefinitions := getDestinationDefinitions(cache)
+		require.Len(t, dstDefinitions, 1)
+	}
+
+	// in the sixth call we didn't receive any updates, so the cache should remain the same, and we should receive an error
+	sixthCall := []byte(`{}`)
+	response = &WorkspaceConfigs{}
+	err = jsonrs.Unmarshal(sixthCall, &response)
 	require.NoError(t, err)
 	updateAfter, updated, err = updater.UpdateCache(response, cache)
 	require.Equal(t, time.Time{}, updateAfter)

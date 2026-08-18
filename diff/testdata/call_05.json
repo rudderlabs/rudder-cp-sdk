@@ -1,0 +1,18 @@
+{
+	"workspaces": {
+		"workspace1": null
+	},
+	"sourceDefinitions": {
+        "close_crm": {
+            "name": "Close CRM"
+        },
+		"singer-klaviyo": {
+			"name": "Klaviyo"
+		}
+	},
+	"destinationDefinitions": {
+		"LINKEDIN_ADS": {
+			"name": "LinkedIn Ads"
+		}
+	}
+}

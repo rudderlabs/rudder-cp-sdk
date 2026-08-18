@@ -84,7 +84,11 @@ func (u *Updater[K]) UpdateCache(new, cache UpdateableObject[K]) (time.Time, boo
 			}
 		}
 
-		if updated {
+		// The cache needs to be refreshed both when at least one element was updated and when elements were
+		// removed. Removals are only signaled by the absence of the corresponding keys in the new list, so
+		// comparing the lengths is enough to detect them: an added key always comes with a non-nil value, i.e.
+		// it always sets updated to true as well.
+		if updated || n.Length() != c.Length() {
 			atLeastOneUpdate = true
 
 			c.Reset()
