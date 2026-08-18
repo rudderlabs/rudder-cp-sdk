@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.4.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.3.0...v1.4.0) (2026-08-18)
+
+
+### Features
+
+* add option for controlling secret embedding ([#188](https://github.com/rudderlabs/rudder-cp-sdk/issues/188)) ([671f948](https://github.com/rudderlabs/rudder-cp-sdk/commit/671f948a902ffe329083de0d967810e7efe2d76a))
+
+
+### Bug Fixes
+
+* **vuln:** pin and bump action refs (SEC-171) ([#178](https://github.com/rudderlabs/rudder-cp-sdk/issues/178)) ([087c96b](https://github.com/rudderlabs/rudder-cp-sdk/commit/087c96b1f00228cb88dee7e3637b1ca46978d3ac))
+
+
+### Miscellaneous
+
+* **deps:** bump github.com/stretchr/testify from 1.11.1 to 1.12.0 ([#190](https://github.com/rudderlabs/rudder-cp-sdk/issues/190)) ([f3a3d39](https://github.com/rudderlabs/rudder-cp-sdk/commit/f3a3d3934222f06423eceb89657cde84fa9c2e63))
+* **deps:** bump step-security/harden-runner from 2.19.4 to 2.21.0 ([#179](https://github.com/rudderlabs/rudder-cp-sdk/issues/179)) ([52641e6](https://github.com/rudderlabs/rudder-cp-sdk/commit/52641e68943f62ba49a79cf56cb1784f5cc525bc))
+* **vuln:** scope workflow permissions to least privilege (SEC-167) ([#185](https://github.com/rudderlabs/rudder-cp-sdk/issues/185)) ([bf95a89](https://github.com/rudderlabs/rudder-cp-sdk/commit/bf95a891d4f1601999278b40bb4a04c583dae8ad))
+
 ## [1.3.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.2.2...v1.3.0) (2026-03-09)
 
 
