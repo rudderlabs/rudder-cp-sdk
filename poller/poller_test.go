@@ -177,6 +177,68 @@ func TestPoller(t *testing.T) {
 
 		wg.Wait()
 	})
+
+	t.Run("should remove deleted workspaces from the cache even if nothing else was updated", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(cancel)
+
+		var (
+			wc1UpdatedAt = time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)
+			wc2UpdatedAt = time.Date(2009, 11, 18, 20, 34, 58, 651387237, time.UTC)
+		)
+
+		client := &mockClient{calls: []clientCall{
+			{ // both workspaces are returned for the first time
+				dataToBeReturned: &modelv2.WorkspaceConfigs{
+					Workspaces: map[string]*modelv2.WorkspaceConfig{
+						"wc-1": {UpdatedAt: wc1UpdatedAt},
+						"wc-2": {UpdatedAt: wc2UpdatedAt},
+					},
+				},
+				expectedUpdatedAt: time.Time{},
+			},
+			{ // wc-1 is not updated and wc-2 is deleted, i.e. the only change is a removal
+				dataToBeReturned: &modelv2.WorkspaceConfigs{
+					Workspaces: map[string]*modelv2.WorkspaceConfig{"wc-1": nil},
+				},
+				expectedUpdatedAt: wc2UpdatedAt,
+			},
+			{ // nothing changed at all, updatedAt should still be the one of the first call
+				dataToBeReturned: &modelv2.WorkspaceConfigs{
+					Workspaces: map[string]*modelv2.WorkspaceConfig{"wc-1": nil},
+				},
+				expectedUpdatedAt: wc2UpdatedAt,
+			},
+		}}
+
+		cache := &modelv2.WorkspaceConfigs{}
+		updater := &diff.Updater[string]{}
+
+		var wg sync.WaitGroup
+		wg.Add(len(client.calls))
+		updates := make([]bool, 0, len(client.calls))
+
+		runTestPoller(t, ctx, client, func(obj diff.UpdateableObject[string]) (time.Time, bool, error) {
+			defer wg.Done()
+
+			updatedAt, updated, err := updater.UpdateCache(obj, cache)
+			updates = append(updates, updated)
+			if len(updates) == len(client.calls) {
+				cancel()
+			}
+
+			return updatedAt, updated, err
+		})
+
+		wg.Wait()
+
+		require.Equal(t, []bool{true, true, false}, updates,
+			"a removal should be reported as an update, a response with no changes at all should not")
+		require.Len(t, cache.Workspaces, 1, "the deleted workspace should have been removed from the cache")
+		require.Contains(t, cache.Workspaces, "wc-1")
+		require.NotContains(t, cache.Workspaces, "wc-2")
+		require.Equal(t, wc1UpdatedAt, cache.Workspaces["wc-1"].UpdatedAt)
+	})
 }
 
 func runTestPoller(
