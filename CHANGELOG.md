@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.1](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.4.0...v1.4.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* diff cache not being updated when a workspace is deleted ([#191](https://github.com/rudderlabs/rudder-cp-sdk/issues/191)) ([1160af1](https://github.com/rudderlabs/rudder-cp-sdk/commit/1160af12f6f3fd3b1ccae9804f5168a8a9dd2e2d))
+
+
+### Miscellaneous
+
+* **deps:** bump actions/checkout from 7.0.0 to 7.0.1 ([#192](https://github.com/rudderlabs/rudder-cp-sdk/issues/192)) ([9cc2bcc](https://github.com/rudderlabs/rudder-cp-sdk/commit/9cc2bcc20b80c348cfc567d742f482a171d1d70b))
+
 ## [1.4.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.3.0...v1.4.0) (2026-08-18)
 
 
