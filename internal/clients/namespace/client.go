@@ -17,6 +17,9 @@ type Client struct {
 	*base.Client
 
 	Identity *identity.Namespace
+	// Secrets controls whether account secrets are embedded in workspace configs responses.
+	// If empty, the control plane's default applies.
+	Secrets string
 }
 
 func (c *Client) GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error {
@@ -65,7 +68,8 @@ func (c *Client) GetWithAuth(ctx context.Context, path string, queryOpts ...base
 }
 
 func (c *Client) getWorkspaceConfigsReader(ctx context.Context, updatedAfter time.Time) (io.ReadCloser, error) {
-	req, err := c.GetWithAuth(ctx, "/configuration/v2/namespaces/"+c.Identity.Namespace, base.WithUpdatedAfter(updatedAfter))
+	req, err := c.GetWithAuth(ctx, "/configuration/v2/namespaces/"+c.Identity.Namespace,
+		base.WithUpdatedAfter(updatedAfter), base.WithSecrets(c.Secrets))
 	if err != nil {
 		return nil, err
 	}

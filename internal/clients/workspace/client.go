@@ -17,6 +17,9 @@ type Client struct {
 	*base.Client
 
 	Identity *identity.Workspace
+	// Secrets controls whether account secrets are embedded in workspace configs responses.
+	// If empty, the control plane's default applies.
+	Secrets string
 }
 
 func (c *Client) Get(ctx context.Context, path string, queryOpts ...base.QueryOption) (*http.Request, error) {
@@ -31,7 +34,8 @@ func (c *Client) Get(ctx context.Context, path string, queryOpts ...base.QueryOp
 }
 
 func (c *Client) getWorkspaceConfigsReader(ctx context.Context, updatedAfter time.Time) (io.ReadCloser, error) {
-	req, err := c.Get(ctx, "/data-plane/v2/workspaceConfig", base.WithUpdatedAfter(updatedAfter))
+	req, err := c.Get(ctx, "/data-plane/v2/workspaceConfig",
+		base.WithUpdatedAfter(updatedAfter), base.WithSecrets(c.Secrets))
 	if err != nil {
 		return nil, err
 	}

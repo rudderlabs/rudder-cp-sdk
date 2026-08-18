@@ -43,6 +43,20 @@ func WithBaseUrl(baseUrl string) Option {
 	}
 }
 
+// WithSecrets controls whether account secrets are embedded in workspace configs responses.
+// If not set, the control plane's default applies, which is [SecretsOmit].
+func WithSecrets(s Secrets) Option {
+	return func(cp *ControlPlane) error {
+		switch s {
+		case SecretsEmbed, SecretsOmit:
+			cp.config.secrets = s
+			return nil
+		default:
+			return fmt.Errorf("invalid secrets option: %q", s)
+		}
+	}
+}
+
 func WithRequestDoer(reqDoer RequestDoer) Option {
 	return func(cp *ControlPlane) error {
 		cp.config.httpClient = reqDoer

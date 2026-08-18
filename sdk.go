@@ -20,6 +20,16 @@ const (
 	defaultNamespaceIdentityBaseURL = "https://dp.api.rudderstack.com"
 )
 
+// Secrets determines how account secrets are returned by the workspace configs endpoints.
+type Secrets string
+
+const (
+	// SecretsEmbed returns account secrets in plain form, embedded in the workspace configs response.
+	SecretsEmbed Secrets = "embed"
+	// SecretsOmit leaves account secrets out of the workspace configs response. This is the control plane's default.
+	SecretsOmit Secrets = "omit"
+)
+
 type ControlPlane struct {
 	Client
 	config struct {
@@ -27,6 +37,7 @@ type ControlPlane struct {
 		workspaceIdentity *identity.Workspace
 		namespaceIdentity *identity.Namespace
 		httpClient        RequestDoer
+		secrets           Secrets
 	}
 }
 
@@ -64,6 +75,7 @@ func New(options ...Option) (*ControlPlane, error) {
 		cp.Client = &workspace.Client{
 			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl},
 			Identity: cp.config.workspaceIdentity,
+			Secrets:  string(cp.config.secrets),
 		}
 	} else if cp.config.namespaceIdentity != nil {
 		baseUrl := cp.config.baseUrl
@@ -73,6 +85,7 @@ func New(options ...Option) (*ControlPlane, error) {
 		cp.Client = &namespace.Client{
 			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl},
 			Identity: cp.config.namespaceIdentity,
+			Secrets:  string(cp.config.secrets),
 		}
 	} else {
 		return nil, fmt.Errorf("workspace or namespace identity must be set")
