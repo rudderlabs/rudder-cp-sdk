@@ -1,12 +1,12 @@
 module github.com/rudderlabs/rudder-cp-sdk
 
-go 1.26.6
+go 1.27.1
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3
-	github.com/rudderlabs/rudder-go-kit v0.78.1
+	github.com/rudderlabs/rudder-go-kit v0.80.1
 	github.com/rudderlabs/rudder-observability-kit v0.0.7
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 )
 
 require (
@@ -29,10 +29,8 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
