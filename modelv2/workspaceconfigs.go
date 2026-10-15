@@ -12,6 +12,9 @@ var (
 	_ diff.UpdateableList[string, diff.UpdateableElement] = &Workspaces{}
 	_ diff.NonUpdateablesList[string, any]                = &SourceDefinitions{}
 	_ diff.NonUpdateablesList[string, any]                = &DestinationDefinitions{}
+	_ diff.IncrementalDefinitionsReceiver                 = &WorkspaceConfigs{}
+	_ diff.OmittableList                                  = &SourceDefinitions{}
+	_ diff.OmittableList                                  = &DestinationDefinitions{}
 )
 
 // WorkspaceConfigs represents workspace configurations of one or more workspaces, as well as definitions shared by all of them.
@@ -19,9 +22,13 @@ type WorkspaceConfigs struct {
 	// Workspaces is a map of workspace configurations. The key is a workspace ID.
 	Workspaces Workspaces `json:"workspaces"`
 	// SourceDefinitions is a map of source definitions. The key is a source definition name.
+	// It is nil when omitted from an incremental definitions response, i.e. unchanged.
 	SourceDefinitions SourceDefinitions `json:"sourceDefinitions"`
 	// DestinationDefinitions is a map of destination definitions. The key is a destination definition name.
+	// It is nil when omitted from an incremental definitions response, i.e. unchanged.
 	DestinationDefinitions DestinationDefinitions `json:"destinationDefinitions"`
+
+	diff.IncrementalDefinitionsState
 }
 
 func (wcs *WorkspaceConfigs) Updateables() iter.Seq[diff.UpdateableList[string, diff.UpdateableElement]] {
@@ -91,8 +98,9 @@ func (wc *WorkspaceConfig) IsNil() bool             { return wc == nil }
 
 type SourceDefinitions map[string]*SourceDefinition
 
-func (sd *SourceDefinitions) Type() string { return "SourceDefinitions" }
-func (sd *SourceDefinitions) Reset()       { *sd = make(map[string]*SourceDefinition) }
+func (sd *SourceDefinitions) Type() string  { return "SourceDefinitions" }
+func (sd *SourceDefinitions) Reset()        { *sd = make(map[string]*SourceDefinition) }
+func (sd *SourceDefinitions) Omitted() bool { return *sd == nil }
 func (sd *SourceDefinitions) SetElementByKey(id string, object any) {
 	(*sd)[id] = object.(*SourceDefinition)
 }
@@ -109,8 +117,9 @@ func (sd *SourceDefinitions) List() iter.Seq2[string, any] {
 
 type DestinationDefinitions map[string]*DestinationDefinition
 
-func (dd *DestinationDefinitions) Type() string { return "DestinationDefinitions" }
-func (dd *DestinationDefinitions) Reset()       { *dd = make(map[string]*DestinationDefinition) }
+func (dd *DestinationDefinitions) Type() string  { return "DestinationDefinitions" }
+func (dd *DestinationDefinitions) Reset()        { *dd = make(map[string]*DestinationDefinition) }
+func (dd *DestinationDefinitions) Omitted() bool { return *dd == nil }
 func (dd *DestinationDefinitions) SetElementByKey(id string, object any) {
 	(*dd)[id] = object.(*DestinationDefinition)
 }
