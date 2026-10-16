@@ -33,11 +33,12 @@ const (
 type ControlPlane struct {
 	Client
 	config struct {
-		baseUrl           *url.URL
-		workspaceIdentity *identity.Workspace
-		namespaceIdentity *identity.Namespace
-		httpClient        RequestDoer
-		secrets           Secrets
+		baseUrl                *url.URL
+		workspaceIdentity      *identity.Workspace
+		namespaceIdentity      *identity.Namespace
+		httpClient             RequestDoer
+		secrets                Secrets
+		incrementalDefinitions bool
 	}
 }
 
@@ -73,7 +74,7 @@ func New(options ...Option) (*ControlPlane, error) {
 			baseUrl, _ = url.Parse(defaultWorkspaceIdentityBaseURL)
 		}
 		cp.Client = &workspace.Client{
-			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl},
+			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
 			Identity: cp.config.workspaceIdentity,
 			Secrets:  string(cp.config.secrets),
 		}
@@ -83,7 +84,7 @@ func New(options ...Option) (*ControlPlane, error) {
 			baseUrl, _ = url.Parse(defaultNamespaceIdentityBaseURL)
 		}
 		cp.Client = &namespace.Client{
-			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl},
+			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
 			Identity: cp.config.namespaceIdentity,
 			Secrets:  string(cp.config.secrets),
 		}
