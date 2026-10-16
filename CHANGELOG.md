@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.4.1...v1.4.2) (2026-10-16)
+
+
+### Miscellaneous
+
+* bump go to 1.27.2, rudder-go-kit to v0.84.0 and github actions ([#209](https://github.com/rudderlabs/rudder-cp-sdk/issues/209)) ([9b13231](https://github.com/rudderlabs/rudder-cp-sdk/commit/9b13231d578413b40634c45d8260e9e352dbae23))
+
 ## [1.4.1](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.4.0...v1.4.1) (2026-08-18)
 
 
