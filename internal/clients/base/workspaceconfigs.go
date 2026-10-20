@@ -46,6 +46,13 @@ func (c *Client) SendWorkspaceConfigs(req *http.Request, object any) error {
 		return fmt.Errorf("decoding workspace configs: %w", err)
 	}
 
+	// Only a confirmed response may omit lists. Applying an unconfirmed one would empty the cached copies.
+	if c.IncrementalDefinitions && !confirmed {
+		if omitted, ok := omittedList(object); ok {
+			return fmt.Errorf("%s omitted from a response without the %s confirmation header", omitted, incrementalDefinitionsHeader)
+		}
+	}
+
 	if r, ok := object.(diff.IncrementalDefinitionsReceiver); ok {
 		r.SetIncrementalDefinitions(confirmed, cursor)
 	}
@@ -66,4 +73,18 @@ func supportsIncrementalDefinitions(object any) bool {
 		}
 	}
 	return true
+}
+
+// omittedList returns the type of the first non updateable list of object omitted from the response, if any.
+func omittedList(object any) (string, bool) {
+	uo, ok := object.(diff.UpdateableObject[string])
+	if !ok {
+		return "", false
+	}
+	for l := range uo.NonUpdateables() {
+		if o, ok := l.(diff.OmittableList); ok && o.Omitted() {
+			return l.Type(), true
+		}
+	}
+	return "", false
 }
