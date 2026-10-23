@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.2](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.4.1...v1.4.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* bump dependency versions ([#214](https://github.com/rudderlabs/rudder-cp-sdk/issues/214)) ([79e4f31](https://github.com/rudderlabs/rudder-cp-sdk/commit/79e4f316cf2da6f1f4588bef53ebe73538a7d668))
+
+
+### Miscellaneous
+
+* bump go to 1.27.2, rudder-go-kit to v0.84.0 and github actions ([#209](https://github.com/rudderlabs/rudder-cp-sdk/issues/209)) ([9b13231](https://github.com/rudderlabs/rudder-cp-sdk/commit/9b13231d578413b40634c45d8260e9e352dbae23))
+* enforce errors.AsType and add AGENTS.md ([#213](https://github.com/rudderlabs/rudder-cp-sdk/issues/213)) ([1970b06](https://github.com/rudderlabs/rudder-cp-sdk/commit/1970b06860681cafdd9737788571ecc114ebc9d7))
+
 ## [1.4.1](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.4.0...v1.4.1) (2026-08-18)
 
 
