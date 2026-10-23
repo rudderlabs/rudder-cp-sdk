@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/rudderlabs/rudder-go-kit/jsonrs"
+
 	"github.com/rudderlabs/rudder-cp-sdk/diff"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 )
@@ -91,4 +93,33 @@ func TestNonUpdateables(t *testing.T) {
 	require.Len(t, nonUpdateables, 2)
 	require.Equal(t, &wcs.SourceDefinitions, nonUpdateables[0])
 	require.Equal(t, &wcs.DestinationDefinitions, nonUpdateables[1])
+}
+
+func TestOmittedDefinitions(t *testing.T) {
+	for _, lib := range []string{jsonrs.StdLib, jsonrs.SonnetLib, jsonrs.JsoniterLib} {
+		t.Run(lib, func(t *testing.T) {
+			for _, tc := range []struct {
+				name     string
+				data     string
+				omitted  bool
+				expected modelv2.SourceDefinitions
+			}{
+				{name: "null", data: `null`, omitted: true},
+				{name: "empty", data: `{}`, expected: modelv2.SourceDefinitions{}},
+				{name: "sent", data: `{"webhook":{"name":"webhook"}}`, expected: modelv2.SourceDefinitions{"webhook": {Name: "webhook"}}},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					var wcs modelv2.WorkspaceConfigs
+					data := `{"sourceDefinitions":` + tc.data + `,"destinationDefinitions":` + tc.data + `,"IncrementalDefinitionsState":{"confirmed":true}}`
+					require.NoError(t, jsonrs.NewWithLibrary(lib).Unmarshal([]byte(data), &wcs))
+
+					require.Equal(t, tc.expected, wcs.SourceDefinitions)
+					require.Equal(t, tc.omitted, wcs.SourceDefinitions.Omitted())
+					require.Equal(t, tc.omitted, wcs.DestinationDefinitions.Omitted())
+					confirmed, _ := wcs.IncrementalDefinitions()
+					require.False(t, confirmed, "the state should not be decoded")
+				})
+			}
+		})
+	}
 }

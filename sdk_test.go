@@ -3,18 +3,23 @@ package cpsdk
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
+	"iter"
 	"net/http"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/rudderlabs/rudder-go-kit/testhelper/httptest"
 
 	"github.com/rudderlabs/rudder-cp-sdk/diff"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
+	"github.com/rudderlabs/rudder-cp-sdk/poller"
 )
 
 const updatedAfterTimeFormat = "2006-01-02T15:04:05.000Z"
@@ -340,6 +345,328 @@ func TestSecrets(t *testing.T) {
 		)
 		require.ErrorContains(t, err, `invalid secrets option: "invalid"`)
 	})
+}
+
+func TestIncrementalDefinitions(t *testing.T) {
+	t.Run("request", func(t *testing.T) {
+		for _, tc := range []struct {
+			name             string
+			enabled          bool
+			object           any
+			expectedRequests []string // opt-in header of each request
+		}{
+			{name: "disabled", object: &modelv2.WorkspaceConfigs{}, expectedRequests: []string{""}},
+			{name: "supported object", enabled: true, object: &modelv2.WorkspaceConfigs{}, expectedRequests: []string{"true"}},
+			{name: "receiver that is not an updateable object", enabled: true, object: &receiver{}, expectedRequests: []string{"true"}},
+			{name: "object that is not a receiver", enabled: true, object: &map[string]any{}},
+			{name: "non omittable definitions", enabled: true, object: &nonOmittableReceiver{}},
+		} {
+			for name, identity := range map[string]Option{
+				"namespace identity": WithNamespaceIdentity("test-namespace", "test-secret"),
+				"workspace identity": WithWorkspaceIdentity("token"),
+			} {
+				t.Run(tc.name+"/"+name, func(t *testing.T) {
+					var requests []string
+					ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						requests = append(requests, r.Header.Get("X-Rudder-Incremental-Definitions"))
+						_, err := w.Write([]byte(`{"workspaces":{},"sourceDefinitions":{},"destinationDefinitions":{}}`))
+						assert.NoError(t, err)
+					}))
+					defer ts.Close()
+
+					cpSDK, err := New(WithBaseUrl(ts.URL), identity, WithIncrementalDefinitions(tc.enabled))
+					require.NoError(t, err)
+
+					err = cpSDK.GetWorkspaceConfigs(context.Background(), tc.object, time.Time{})
+					require.Equal(t, tc.expectedRequests, requests)
+					if tc.expectedRequests == nil {
+						_, permanent := errors.AsType[*PermanenentError](err)
+						require.True(t, permanent, "unsupported objects should not be retried")
+						return
+					}
+					require.NoError(t, err)
+				})
+			}
+		}
+	})
+
+	t.Run("response", func(t *testing.T) {
+		const cursor = "2026-10-14T10:00:00.000Z"
+		var (
+			confirmed      = map[string]string{"X-Rudder-Incremental-Definitions": "true", "X-Rudder-Config-Updated-At": cursor}
+			sentinel       = state(true, time.Unix(1, 0))
+			confirmedState = state(true, time.Date(2026, 10, 14, 10, 0, 0, 0, time.UTC))
+			srcDefs        = modelv2.SourceDefinitions{"webhook": {Name: "webhook"}}
+		)
+		for _, tc := range []struct {
+			name            string
+			status          int
+			headers         map[string]string
+			definitions     string
+			expectedErr     string
+			expectedState   diff.IncrementalDefinitionsState
+			expectedSrcDefs modelv2.SourceDefinitions
+		}{
+			{name: "old server", definitions: `{"webhook":{"name":"webhook"}}`, expectedSrcDefs: srcDefs},
+			{name: "definitions sent", headers: confirmed, definitions: `{"webhook":{"name":"webhook"}}`, expectedState: confirmedState, expectedSrcDefs: srcDefs},
+			{name: "definitions unchanged", headers: confirmed, definitions: `null`, expectedState: confirmedState},
+			{name: "empty definitions", headers: confirmed, definitions: `{}`, expectedState: confirmedState, expectedSrcDefs: modelv2.SourceDefinitions{}},
+			{
+				name:          "confirmation without cursor",
+				headers:       map[string]string{"X-Rudder-Incremental-Definitions": "true"},
+				definitions:   `null`,
+				expectedErr:   `invalid X-Rudder-Config-Updated-At header ""`,
+				expectedState: sentinel,
+			},
+			{
+				name:          "confirmation with invalid cursor",
+				headers:       map[string]string{"X-Rudder-Incremental-Definitions": "true", "X-Rudder-Config-Updated-At": "yesterday"},
+				definitions:   `null`,
+				expectedErr:   `invalid X-Rudder-Config-Updated-At header "yesterday"`,
+				expectedState: sentinel,
+			},
+			{
+				name:            "unexpected confirmation value",
+				headers:         map[string]string{"X-Rudder-Incremental-Definitions": "1", "X-Rudder-Config-Updated-At": cursor},
+				definitions:     `{"webhook":{"name":"webhook"}}`,
+				expectedSrcDefs: srcDefs,
+			},
+			{
+				name:            "cursor without confirmation",
+				headers:         map[string]string{"X-Rudder-Config-Updated-At": cursor},
+				definitions:     `{"webhook":{"name":"webhook"}}`,
+				expectedSrcDefs: srcDefs,
+			},
+			{
+				name:          "unconfirmed response omitting definitions",
+				definitions:   `null`,
+				expectedErr:   "SourceDefinitions omitted from a response without the X-Rudder-Incremental-Definitions confirmation header",
+				expectedState: sentinel,
+			},
+			{
+				name:          "unexpected status code",
+				status:        http.StatusInternalServerError,
+				headers:       confirmed,
+				expectedErr:   "unexpected status code: 500",
+				expectedState: sentinel,
+			},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					for k, v := range tc.headers {
+						w.Header().Set(k, v)
+					}
+					if tc.status != 0 {
+						w.WriteHeader(tc.status)
+						return
+					}
+					_, err := fmt.Fprintf(w, `{"workspaces":{},"sourceDefinitions":%s,"destinationDefinitions":%[1]s}`, tc.definitions)
+					assert.NoError(t, err)
+				}))
+				defer ts.Close()
+
+				cpSDK, err := New(WithBaseUrl(ts.URL), WithNamespaceIdentity("test-namespace", "test-secret"), WithIncrementalDefinitions(true))
+				require.NoError(t, err)
+
+				wcs := &modelv2.WorkspaceConfigs{IncrementalDefinitionsState: sentinel}
+				err = cpSDK.GetWorkspaceConfigs(context.Background(), wcs, time.Time{})
+				require.Equal(t, tc.expectedState, wcs.IncrementalDefinitionsState)
+				if tc.expectedErr != "" {
+					require.ErrorContains(t, err, tc.expectedErr)
+					return
+				}
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedSrcDefs, wcs.SourceDefinitions)
+			})
+		}
+	})
+}
+
+func TestIncrementalDefinitionsUnconfirmedOmission(t *testing.T) {
+	// the second response omits the definitions, but the confirmation headers got lost on the way
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		if requests == 1 {
+			w.Header().Set("X-Rudder-Incremental-Definitions", "true")
+			w.Header().Set("X-Rudder-Config-Updated-At", "2026-10-14T10:01:00.000Z")
+			_, err := w.Write([]byte(`{"workspaces":{"ws-1":{"updatedAt":"2026-10-14T10:01:00.000Z"}},"sourceDefinitions":{"webhook":{"name":"webhook"}},"destinationDefinitions":{"WEBHOOK":{"name":"WEBHOOK"}}}`))
+			assert.NoError(t, err)
+			return
+		}
+		_, err := w.Write([]byte(`{"workspaces":{"ws-1":null},"sourceDefinitions":null,"destinationDefinitions":null}`))
+		assert.NoError(t, err)
+	}))
+	defer srv.Close()
+
+	cpSDK, err := New(WithBaseUrl(srv.URL), WithNamespaceIdentity("test-namespace", "test-secret"), WithIncrementalDefinitions(true))
+	require.NoError(t, err)
+
+	var (
+		cache   = &modelv2.WorkspaceConfigs{}
+		updater diff.Updater[string]
+	)
+	resp := &modelv2.WorkspaceConfigs{}
+	require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), resp, time.Time{}))
+	updatedAfter, _, err := updater.UpdateCache(resp, cache)
+	require.NoError(t, err)
+
+	err = cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, updatedAfter)
+	require.ErrorContains(t, err, "omitted from a response without the X-Rudder-Incremental-Definitions confirmation header")
+	_, permanent := errors.AsType[*PermanenentError](err)
+	require.False(t, permanent, "the error should be retried")
+	require.Equal(t, modelv2.SourceDefinitions{"webhook": {Name: "webhook"}}, cache.SourceDefinitions)
+	require.Equal(t, modelv2.DestinationDefinitions{"WEBHOOK": {Name: "WEBHOOK"}}, cache.DestinationDefinitions)
+}
+
+func TestIncrementalDefinitionsPolling(t *testing.T) {
+	ts := func(minute int) string {
+		return time.Date(2026, 10, 14, 10, minute, 0, 0, time.UTC).Format(updatedAfterTimeFormat)
+	}
+	defs := func(name string) modelv2.SourceDefinitions { return modelv2.SourceDefinitions{"webhook": {Name: name}} }
+
+	type result struct {
+		updated   bool
+		srcDefs   modelv2.SourceDefinitions
+		fullFetch bool // the handler failed with diff.ErrFullFetchRequired
+	}
+	steps := []struct {
+		updatedAfter string // expected in the request
+		cursor       string // empty for a legacy response, e.g. kill switch on
+		workspaces   string
+		definitions  string
+		expected     result
+	}{
+		{ // full fetch
+			cursor: ts(1), workspaces: fmt.Sprintf(`{"ws-1":{"updatedAt":%q}}`, ts(1)), definitions: `{"webhook":{"name":"v1"}}`,
+			expected: result{updated: true, srcDefs: defs("v1")},
+		},
+		{ // a workspace missing from the cache
+			updatedAfter: ts(1), cursor: ts(1), workspaces: `{"ws-1":null,"ws-2":null}`, definitions: `null`,
+			expected: result{srcDefs: defs("v1"), fullFetch: true},
+		},
+		{ // so the retry is a full fetch
+			cursor: ts(1), workspaces: fmt.Sprintf(`{"ws-1":{"updatedAt":%q}}`, ts(1)), definitions: `{"webhook":{"name":"v1"}}`,
+			expected: result{updated: true, srcDefs: defs("v1")},
+		},
+		{ // nothing changed
+			updatedAfter: ts(1), cursor: ts(2), workspaces: `{"ws-1":null}`, definitions: `null`,
+			expected: result{srcDefs: defs("v1")},
+		},
+		{ // definitions changed
+			updatedAfter: ts(2), cursor: ts(3), workspaces: `{"ws-1":null}`, definitions: `{"webhook":{"name":"v2"}}`,
+			expected: result{updated: true, srcDefs: defs("v2")},
+		},
+		{ // kill switch on
+			updatedAfter: ts(3), workspaces: `{"ws-1":null}`, definitions: `{"webhook":{"name":"v2"}}`,
+			expected: result{srcDefs: defs("v2")},
+		},
+		{ // kill switch off
+			updatedAfter: ts(3), cursor: ts(4), workspaces: `{"ws-1":null}`, definitions: `null`,
+			expected: result{srcDefs: defs("v2")},
+		},
+		{ // definitions changed during the poll, the cursor is earlier than the new workspace
+			updatedAfter: ts(4), cursor: ts(5), workspaces: fmt.Sprintf(`{"ws-1":null,"ws-2":{"updatedAt":%q}}`, ts(6)), definitions: `null`,
+			expected: result{updated: true, srcDefs: defs("v2")},
+		},
+		{ // and are delivered by the next one
+			updatedAfter: ts(5), cursor: ts(6), workspaces: `{"ws-1":null,"ws-2":null}`, definitions: `{"webhook":{"name":"v3"}}`,
+			expected: result{updated: true, srcDefs: defs("v3")},
+		},
+	}
+
+	var (
+		mu       sync.Mutex
+		requests []string // opt-in header and updatedAfter of each request
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		requests = append(requests, r.Header.Get("X-Rudder-Incremental-Definitions")+" "+r.URL.Query().Get("updatedAfter"))
+		if len(requests) > len(steps) {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		s := steps[len(requests)-1]
+		if s.cursor != "" {
+			w.Header().Set("X-Rudder-Incremental-Definitions", "true")
+			w.Header().Set("X-Rudder-Config-Updated-At", s.cursor)
+		}
+		_, err := fmt.Fprintf(w, `{"workspaces":%s,"sourceDefinitions":%s,"destinationDefinitions":%[2]s}`, s.workspaces, s.definitions)
+		assert.NoError(t, err)
+	}))
+	defer srv.Close()
+
+	cpSDK, err := New(WithBaseUrl(srv.URL), WithNamespaceIdentity("test-namespace", "test-secret"), WithIncrementalDefinitions(true))
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var (
+		cache   = &modelv2.WorkspaceConfigs{}
+		updater diff.Updater[string]
+		results []result
+	)
+	p, err := poller.NewWorkspaceConfigsPoller(
+		func(ctx context.Context, obj diff.UpdateableObject[string], updatedAfter time.Time) error {
+			return cpSDK.GetWorkspaceConfigs(ctx, obj, updatedAfter)
+		},
+		func(obj diff.UpdateableObject[string]) (time.Time, bool, error) {
+			updatedAt, updated, err := updater.UpdateCache(obj, cache)
+			fullFetch := errors.Is(err, diff.ErrFullFetchRequired)
+			require.True(t, err == nil || fullFetch, "unexpected error: %v", err)
+			results = append(results, result{updated: updated, srcDefs: cache.SourceDefinitions, fullFetch: fullFetch})
+			if len(results) == len(steps) {
+				cancel()
+			}
+			return updatedAt, updated, err
+		},
+		func() diff.UpdateableObject[string] { return &modelv2.WorkspaceConfigs{} },
+		poller.WithPollingInterval[string](time.Nanosecond),
+		poller.WithPollingBackoffInitialInterval[string](time.Nanosecond),
+		poller.WithPollingBackoffMaxInterval[string](time.Nanosecond),
+	)
+	require.NoError(t, err)
+	p.Run(ctx)
+
+	var expectedRequests []string
+	var expectedResults []result
+	for _, s := range steps {
+		expectedRequests = append(expectedRequests, "true "+s.updatedAfter)
+		expectedResults = append(expectedResults, s.expected)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	require.GreaterOrEqual(t, len(requests), len(steps))
+	require.Equal(t, expectedRequests, requests[:len(steps)], "ignoring any request after the cancellation")
+	require.Equal(t, expectedResults, results)
+}
+
+type receiver struct {
+	diff.IncrementalDefinitionsState
+	Workspaces map[string]any `json:"workspaces"`
+}
+
+// nonOmittableReceiver is a receiver with a non updateable list that is not an [diff.OmittableList].
+type nonOmittableReceiver struct {
+	diff.IncrementalDefinitionsState
+}
+
+func (*nonOmittableReceiver) Updateables() iter.Seq[diff.UpdateableList[string, diff.UpdateableElement]] {
+	return func(func(diff.UpdateableList[string, diff.UpdateableElement]) bool) {}
+}
+
+func (*nonOmittableReceiver) NonUpdateables() iter.Seq[diff.NonUpdateablesList[string, any]] {
+	return func(yield func(diff.NonUpdateablesList[string, any]) bool) {
+		yield(struct {
+			diff.NonUpdateablesList[string, any]
+		}{})
+	}
+}
+
+func state(confirmed bool, cursor time.Time) (s diff.IncrementalDefinitionsState) {
+	s.SetIncrementalDefinitions(confirmed, cursor)
+	return s
 }
 
 func getLatestUpdatedAt() func(list diff.UpdateableObject[string]) (time.Time, time.Time) {

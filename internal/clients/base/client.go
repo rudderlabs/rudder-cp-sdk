@@ -3,7 +3,6 @@ package base
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
@@ -15,6 +14,8 @@ const updatedAfterTimeFormat = "2006-01-02T15:04:05.000Z"
 type Client struct {
 	HTTPClient HTTPClient
 	BaseURL    *url.URL
+	// IncrementalDefinitions enables requesting incremental definitions for workspace configs.
+	IncrementalDefinitions bool
 }
 
 type HTTPClient interface {
@@ -41,8 +42,9 @@ func (c *Client) Get(ctx context.Context, path string, queryOpts ...QueryOption)
 	return req, nil
 }
 
-// Send the request and return the response body if the status code is 200 OK, otherwise return an error.
-func (c *Client) Send(req *http.Request) (io.ReadCloser, error) {
+// Send the request and return the response if the status code is 200 OK, otherwise return an error.
+// The caller is responsible for closing the response body.
+func (c *Client) Send(req *http.Request) (*http.Response, error) {
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -51,5 +53,5 @@ func (c *Client) Send(req *http.Request) (io.ReadCloser, error) {
 		defer func() { httputil.CloseResponse(res) }()
 		return nil, NewUnexpectedStatusCodeError(res)
 	}
-	return res.Body, nil
+	return res, nil
 }

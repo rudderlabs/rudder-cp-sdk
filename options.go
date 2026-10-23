@@ -63,3 +63,15 @@ func WithRequestDoer(reqDoer RequestDoer) Option {
 		return nil
 	}
 }
+
+// WithIncrementalDefinitions enables requesting incremental definitions, i.e. definitions omitted when unchanged.
+// It only applies to objects passed to GetWorkspaceConfigs that implement [diff.IncrementalDefinitionsReceiver]
+// and, if they are [diff.UpdateableObject]s, whose non updateable lists all implement [diff.OmittableList].
+// Otherwise GetWorkspaceConfigs returns a permanent error without sending the request.
+// Only the namespace endpoint confirms incremental definitions, elsewhere responses stay legacy.
+func WithIncrementalDefinitions(enabled bool) Option {
+	return func(cp *ControlPlane) error {
+		cp.config.incrementalDefinitions = enabled
+		return nil
+	}
+}

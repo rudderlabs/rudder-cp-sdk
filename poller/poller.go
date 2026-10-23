@@ -2,6 +2,7 @@ package poller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -126,6 +127,9 @@ func (p *WorkspaceConfigsPoller[K]) poll(ctx context.Context) (bool, error) {
 
 	updatedAt, updated, err := p.handler(response)
 	if err != nil {
+		if errors.Is(err, diff.ErrFullFetchRequired) {
+			p.updatedAt = time.Time{}
+		}
 		return false, fmt.Errorf("failed to handle workspace configs: %w", err)
 	}
 
