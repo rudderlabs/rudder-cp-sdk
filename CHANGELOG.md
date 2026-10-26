@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.4.2...v1.5.0) (2026-10-26)
+
+
+### Features
+
+* support incremental definitions ([#207](https://github.com/rudderlabs/rudder-cp-sdk/issues/207)) ([936d378](https://github.com/rudderlabs/rudder-cp-sdk/commit/936d37803623e68ee96b98313542f9d1eceffd64))
+
 ## [1.4.2](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.4.1...v1.4.2) (2026-10-23)
 
 
