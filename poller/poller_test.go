@@ -241,6 +241,46 @@ func TestPoller(t *testing.T) {
 	})
 }
 
+func TestPollerHandlerErrors(t *testing.T) {
+	updatedAt := time.Date(2026, 10, 14, 10, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name                 string
+		err                  error
+		expectedUpdatedAfter time.Time
+	}{
+		{name: "full fetch required resets updatedAt", err: fmt.Errorf("handling: %w", diff.ErrFullFetchRequired)},
+		{name: "other errors keep updatedAt", err: errors.New("other"), expectedUpdatedAfter: updatedAt},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var (
+				received []time.Time
+				errs     = []error{nil, tc.err, nil}
+			)
+			p, err := NewWorkspaceConfigsPoller(
+				func(_ context.Context, _ diff.UpdateableObject[string], updatedAfter time.Time) error {
+					received = append(received, updatedAfter)
+					return nil
+				},
+				func(diff.UpdateableObject[string]) (time.Time, bool, error) {
+					return updatedAt, true, errs[len(received)-1]
+				},
+				func() diff.UpdateableObject[string] { return &modelv2.WorkspaceConfigs{} },
+			)
+			require.NoError(t, err)
+
+			for _, expectedErr := range errs {
+				_, err := p.poll(context.Background())
+				if expectedErr == nil {
+					require.NoError(t, err)
+				} else {
+					require.ErrorIs(t, err, expectedErr)
+				}
+			}
+			require.Equal(t, []time.Time{{}, updatedAt, tc.expectedUpdatedAfter}, received)
+		})
+	}
+}
+
 func runTestPoller(
 	t *testing.T,
 	ctx context.Context,

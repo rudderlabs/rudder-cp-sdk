@@ -36,12 +36,31 @@ type Updater[K comparable] struct {
 	latestUpdatedAt time.Time
 }
 
+type nonUpdateablesPair[K comparable] struct {
+	new, cache NonUpdateablesList[K, any]
+}
+
+// UpdateCache updates the cache with the new object and returns the updatedAt to be used for the next request
+// and whether the cache was updated.
+// If new is an [IncrementalDefinitionsReceiver] with confirmed incremental definitions, omitted [OmittableList]s
+// keep their cached copy and the returned updatedAt is the cursor sent by the control plane.
+// Omitted lists stay nil in new, so they must be read from the cache.
 func (u *Updater[K]) UpdateCache(new, cache UpdateableObject[K]) (time.Time, bool, error) {
 	var (
 		countOfUpdatable int
 		atLeastOneUpdate bool
 		latestUpdatedAt  time.Time
+		incremental      bool
+		cursor           time.Time
 	)
+	if r, ok := new.(IncrementalDefinitionsReceiver); ok {
+		incremental, cursor = r.IncrementalDefinitions()
+	}
+
+	nonUpdateables, err := nonUpdateablesToReplace(new, cache, incremental)
+	if err != nil {
+		return time.Time{}, false, err
+	}
 
 	for n := range new.Updateables() {
 		if n.Length() != 0 {
@@ -65,11 +84,11 @@ func (u *Updater[K]) UpdateCache(new, cache UpdateableObject[K]) (time.Time, boo
 			if v.IsNil() {
 				cachedValue, ok := c.GetElementByKey(k)
 				if !ok {
-					return time.Time{}, false, fmt.Errorf(`value "%v" in %q was not updated but was not present in cache`, k, n.Type())
+					return time.Time{}, false, fmt.Errorf(`value "%v" in %q was not updated but was not present in cache: %w`, k, n.Type(), ErrFullFetchRequired)
 				}
 
 				if cachedValue.IsNil() {
-					return time.Time{}, false, fmt.Errorf(`value "%v" in %q was not updated but was nil in cache`, k, n.Type())
+					return time.Time{}, false, fmt.Errorf(`value "%v" in %q was not updated but was nil in cache: %w`, k, n.Type(), ErrFullFetchRequired)
 				}
 
 				n.SetElementByKey(k, cachedValue)
@@ -104,13 +123,22 @@ func (u *Updater[K]) UpdateCache(new, cache UpdateableObject[K]) (time.Time, boo
 	if countOfUpdatable == 0 {
 		return time.Time{}, false, fmt.Errorf("no updateable lists found in new object")
 	}
-	if err := u.replaceNonUpdateables(new, cache); err != nil {
-		return time.Time{}, false, err
+
+	for _, l := range nonUpdateables {
+		l.cache.Reset()
+		for k, v := range l.new.List() {
+			l.cache.SetElementByKey(k, v)
+		}
 	}
 
-	// only update updatedAt if we managed to handle the response
-	// so that we don't miss any updates in case of an error
-	if !latestUpdatedAt.IsZero() {
+	if incremental {
+		// non updateables are only sent when changed
+		atLeastOneUpdate = atLeastOneUpdate || len(nonUpdateables) > 0
+		// the cursor covers non updateables too, so it might be earlier than the latest updateable element
+		u.latestUpdatedAt = cursor
+	} else if !latestUpdatedAt.IsZero() {
+		// only update updatedAt if we managed to handle the response
+		// so that we don't miss any updates in case of an error.
 		// There is a case where all workspaces have not been updated since the last request.
 		// In that case updatedAt will be zero.
 		u.latestUpdatedAt = latestUpdatedAt
@@ -119,7 +147,10 @@ func (u *Updater[K]) UpdateCache(new, cache UpdateableObject[K]) (time.Time, boo
 	return u.latestUpdatedAt, atLeastOneUpdate, nil
 }
 
-func (u *Updater[K]) replaceNonUpdateables(new, cache UpdateableObject[K]) error {
+// nonUpdateablesToReplace pairs the non updateable lists of new with the ones in cache, leaving out the ones
+// omitted from an incremental response. It runs before any change to the cache so that errors leave it untouched.
+func nonUpdateablesToReplace[K comparable](new, cache UpdateableObject[K], incremental bool) ([]nonUpdateablesPair[K], error) {
+	var pairs []nonUpdateablesPair[K]
 	for n := range new.NonUpdateables() {
 		var (
 			found bool
@@ -132,14 +163,23 @@ func (u *Updater[K]) replaceNonUpdateables(new, cache UpdateableObject[K]) error
 			}
 		}
 		if !found {
-			return fmt.Errorf(`cannot find non updateable list of type %q in cache`, n.Type())
+			return nil, fmt.Errorf(`cannot find non updateable list of type %q in cache`, n.Type())
 		}
 
-		c.Reset()
-		for k, v := range n.List() {
-			c.SetElementByKey(k, v)
+		if incremental {
+			o, ok := n.(OmittableList)
+			if !ok {
+				return nil, fmt.Errorf(`non updateable list of type %q does not implement OmittableList`, n.Type())
+			}
+			if o.Omitted() {
+				if co, ok := c.(OmittableList); ok && co.Omitted() {
+					return nil, fmt.Errorf(`non updateable list of type %q was omitted but was nil in cache: %w`, n.Type(), ErrFullFetchRequired)
+				}
+				continue
+			}
 		}
+
+		pairs = append(pairs, nonUpdateablesPair[K]{new: n, cache: c})
 	}
-
-	return nil
+	return pairs, nil
 }
