@@ -15,6 +15,9 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
 )
 
+// IdentityTokenHeader carries the workload identity token read from [Client.IdentityTokenFile].
+const IdentityTokenHeader = "X-Dataplane-Identity"
+
 type Client struct {
 	*base.Client
 
@@ -67,7 +70,7 @@ func (c *Client) GetWithAuth(ctx context.Context, path string, queryOpts ...base
 		// read on every request since the token file may be rotated; an unreadable or empty file sends no header
 		if token, err := os.ReadFile(c.IdentityTokenFile); err == nil {
 			if t := strings.TrimSpace(string(token)); t != "" {
-				req.Header.Set("X-Dataplane-Identity", t)
+				req.Header.Set(IdentityTokenHeader, t)
 			}
 		}
 	}

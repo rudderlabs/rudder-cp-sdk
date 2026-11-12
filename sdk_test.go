@@ -372,6 +372,42 @@ func TestIdentityTokenFile(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	t.Run("redirects", func(t *testing.T) {
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
+
+		var targetRequests []received
+		target := newServer(t, &targetRequests)
+		var finalIdentity string
+		origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Query().Get("redirect") {
+			case "cross-origin":
+				http.Redirect(w, r, target.URL+r.URL.Path, http.StatusFound)
+			case "same-origin":
+				http.Redirect(w, r, r.URL.Path+"?redirect=done", http.StatusFound)
+			default:
+				finalIdentity = r.Header.Get("X-Dataplane-Identity")
+				_, err := w.Write([]byte(`{"workspaces":{}}`))
+				require.NoError(t, err)
+			}
+		}))
+		t.Cleanup(origin.Close)
+
+		for _, redirect := range []string{"cross-origin", "same-origin"} {
+			cpSDK, err := New(
+				WithBaseUrl(origin.URL+"?redirect="+redirect),
+				WithNamespaceIdentity("test-namespace", "test-secret"),
+				WithIdentityTokenFile(tokenFile),
+			)
+			require.NoError(t, err)
+			require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+		}
+
+		require.Len(t, targetRequests, 1)
+		require.Empty(t, targetRequests[0].identity, "cross-origin redirect target must not receive the token")
+		require.Equal(t, "token-1", finalIdentity, "same-origin redirect keeps the token")
+	})
+
 	t.Run("file content is sent and rotation is picked up", func(t *testing.T) {
 		var requests []received
 		ts := newServer(t, &requests)

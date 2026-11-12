@@ -2,6 +2,7 @@ package cpsdk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -66,7 +67,9 @@ func New(options ...Option) (*ControlPlane, error) {
 		}
 	}
 	if cp.config.httpClient == nil {
-		cp.config.httpClient = httputil.DefaultHttpClient()
+		client := httputil.DefaultHttpClient()
+		client.CheckRedirect = dropIdentityTokenOnCrossOriginRedirect
+		cp.config.httpClient = client
 	}
 	// set client based on identity
 	if cp.config.workspaceIdentity != nil {
@@ -94,4 +97,16 @@ func New(options ...Option) (*ControlPlane, error) {
 		return nil, fmt.Errorf("workspace or namespace identity must be set")
 	}
 	return cp, nil
+}
+
+// dropIdentityTokenOnCrossOriginRedirect keeps net/http's default redirect limit and removes the identity token header
+// when a redirect leaves the scheme and host of the original request, since net/http forwards custom headers.
+func dropIdentityTokenOnCrossOriginRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	if req.URL.Scheme != via[0].URL.Scheme || req.URL.Host != via[0].URL.Host {
+		req.Header.Del(namespace.IdentityTokenHeader)
+	}
+	return nil
 }

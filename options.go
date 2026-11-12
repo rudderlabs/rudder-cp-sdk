@@ -62,6 +62,8 @@ func WithSecrets(s Secrets) Option {
 // and its trimmed content is sent in the X-Dataplane-Identity header alongside the existing credentials.
 // If the file is missing, unreadable or empty, the request is sent without the header.
 // It has no effect with a workspace identity.
+// The default HTTP client drops the header on redirects to a different scheme or host;
+// a RequestDoer set with [WithRequestDoer] applies its own redirect policy.
 func WithIdentityTokenFile(path string) Option {
 	return func(cp *ControlPlane) error {
 		cp.config.identityTokenFile = path
