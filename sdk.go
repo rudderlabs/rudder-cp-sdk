@@ -39,6 +39,7 @@ type ControlPlane struct {
 		httpClient             RequestDoer
 		secrets                Secrets
 		incrementalDefinitions bool
+		identityTokenFile      string
 	}
 }
 
@@ -84,9 +85,10 @@ func New(options ...Option) (*ControlPlane, error) {
 			baseUrl, _ = url.Parse(defaultNamespaceIdentityBaseURL)
 		}
 		cp.Client = &namespace.Client{
-			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
-			Identity: cp.config.namespaceIdentity,
-			Secrets:  string(cp.config.secrets),
+			Client:            &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
+			Identity:          cp.config.namespaceIdentity,
+			Secrets:           string(cp.config.secrets),
+			IdentityTokenFile: cp.config.identityTokenFile,
 		}
 	} else {
 		return nil, fmt.Errorf("workspace or namespace identity must be set")

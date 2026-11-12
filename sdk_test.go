@@ -8,6 +8,7 @@ import (
 	"iter"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -345,6 +346,86 @@ func TestSecrets(t *testing.T) {
 		)
 		require.ErrorContains(t, err, `invalid secrets option: "invalid"`)
 	})
+}
+
+func TestIdentityTokenFile(t *testing.T) {
+	type received struct{ identity, user string }
+	newServer := func(t *testing.T, requests *[]received) *httptest.Server {
+		t.Helper()
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, _, _ := r.BasicAuth()
+			*requests = append(*requests, received{identity: r.Header.Get("X-Dataplane-Identity"), user: user})
+			body := `{"workspaces":{}}`
+			if r.URL.Path == "/configuration/v2/namespaces/test-namespace/workspace-ids" {
+				body = `{"data":[]}`
+			}
+			_, err := w.Write([]byte(body))
+			require.NoError(t, err)
+		}))
+		t.Cleanup(ts.Close)
+		return ts
+	}
+	fetchBoth := func(t *testing.T, cpSDK *ControlPlane) {
+		t.Helper()
+		require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+		_, err := cpSDK.GetNamespaceWorkspaces(context.Background())
+		require.NoError(t, err)
+	}
+
+	t.Run("file content is sent and rotation is picked up", func(t *testing.T) {
+		var requests []received
+		ts := newServer(t, &requests)
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1\n"), 0o600))
+
+		cpSDK, err := New(
+			WithBaseUrl(ts.URL),
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityTokenFile(tokenFile),
+			WithRequestDoer(http.DefaultClient),
+		)
+		require.NoError(t, err)
+
+		fetchBoth(t, cpSDK)
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-2"), 0o600))
+		fetchBoth(t, cpSDK)
+
+		require.Equal(t, []received{
+			{identity: "token-1", user: "test-secret"},
+			{identity: "token-1", user: "test-secret"},
+			{identity: "token-2", user: "test-secret"},
+			{identity: "token-2", user: "test-secret"},
+		}, requests)
+	})
+
+	for _, tc := range []struct {
+		name    string
+		options func(t *testing.T) []Option
+	}{
+		{name: "missing file", options: func(t *testing.T) []Option {
+			return []Option{WithIdentityTokenFile(filepath.Join(t.TempDir(), "missing"))}
+		}},
+		{name: "empty file", options: func(t *testing.T) []Option {
+			tokenFile := filepath.Join(t.TempDir(), "token")
+			require.NoError(t, os.WriteFile(tokenFile, []byte(" \n"), 0o600))
+			return []Option{WithIdentityTokenFile(tokenFile)}
+		}},
+		{name: "not set", options: func(*testing.T) []Option { return nil }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests []received
+			ts := newServer(t, &requests)
+
+			cpSDK, err := New(append([]Option{
+				WithBaseUrl(ts.URL),
+				WithNamespaceIdentity("test-namespace", "test-secret"),
+			}, tc.options(t)...)...)
+			require.NoError(t, err)
+
+			fetchBoth(t, cpSDK)
+			require.Equal(t, []received{{user: "test-secret"}, {user: "test-secret"}}, requests)
+		})
+	}
 }
 
 func TestIncrementalDefinitions(t *testing.T) {
