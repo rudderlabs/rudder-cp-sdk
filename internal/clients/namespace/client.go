@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/rudderlabs/rudder-go-kit/httputil"
@@ -13,6 +15,9 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
 )
 
+// IdentityTokenHeader carries the workload identity token read from [Client.IdentityTokenFile].
+const IdentityTokenHeader = "X-Dataplane-Identity"
+
 type Client struct {
 	*base.Client
 
@@ -20,6 +25,9 @@ type Client struct {
 	// Secrets controls whether account secrets are embedded in workspace configs responses.
 	// If empty, the control plane's default applies.
 	Secrets string
+	// IdentityTokenFile is the path of a file holding a workload identity token, sent in the X-Dataplane-Identity header.
+	// If empty, no identity token is sent.
+	IdentityTokenFile string
 }
 
 func (c *Client) GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error {
@@ -58,5 +66,13 @@ func (c *Client) GetWithAuth(ctx context.Context, path string, queryOpts ...base
 		return nil, err
 	}
 	req.SetBasicAuth(c.Identity.Secret, "")
+	if c.IdentityTokenFile != "" {
+		// read on every request since the token file may be rotated; an unreadable or empty file sends no header
+		if token, err := os.ReadFile(c.IdentityTokenFile); err == nil {
+			if t := strings.TrimSpace(string(token)); t != "" {
+				req.Header.Set(IdentityTokenHeader, t)
+			}
+		}
+	}
 	return req, nil
 }

@@ -2,6 +2,7 @@ package cpsdk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -39,6 +40,7 @@ type ControlPlane struct {
 		httpClient             RequestDoer
 		secrets                Secrets
 		incrementalDefinitions bool
+		identityTokenFile      string
 	}
 }
 
@@ -64,8 +66,13 @@ func New(options ...Option) (*ControlPlane, error) {
 			return nil, err
 		}
 	}
+	if cp.config.identityTokenFile != "" && cp.config.workspaceIdentity != nil {
+		return nil, ErrIdentityTokenFileWorkspaceIdentity
+	}
 	if cp.config.httpClient == nil {
-		cp.config.httpClient = httputil.DefaultHttpClient()
+		client := httputil.DefaultHttpClient()
+		client.CheckRedirect = CheckRedirectDropIdentityToken
+		cp.config.httpClient = client
 	}
 	// set client based on identity
 	if cp.config.workspaceIdentity != nil {
@@ -84,12 +91,27 @@ func New(options ...Option) (*ControlPlane, error) {
 			baseUrl, _ = url.Parse(defaultNamespaceIdentityBaseURL)
 		}
 		cp.Client = &namespace.Client{
-			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
-			Identity: cp.config.namespaceIdentity,
-			Secrets:  string(cp.config.secrets),
+			Client:            &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
+			Identity:          cp.config.namespaceIdentity,
+			Secrets:           string(cp.config.secrets),
+			IdentityTokenFile: cp.config.identityTokenFile,
 		}
 	} else {
 		return nil, fmt.Errorf("workspace or namespace identity must be set")
 	}
 	return cp, nil
+}
+
+// CheckRedirectDropIdentityToken is an [http.Client] CheckRedirect function that keeps net/http's default limit of
+// 10 redirects and removes the identity token header when a redirect leaves the scheme and host of the original request,
+// since net/http forwards custom headers. The default HTTP client uses it; set it on your own client when passing one
+// with [WithRequestDoer] together with [WithIdentityTokenFile].
+func CheckRedirectDropIdentityToken(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	if req.URL.Scheme != via[0].URL.Scheme || req.URL.Host != via[0].URL.Host {
+		req.Header.Del(namespace.IdentityTokenHeader)
+	}
+	return nil
 }

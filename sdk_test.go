@@ -8,6 +8,7 @@ import (
 	"iter"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -345,6 +346,139 @@ func TestSecrets(t *testing.T) {
 		)
 		require.ErrorContains(t, err, `invalid secrets option: "invalid"`)
 	})
+}
+
+func TestIdentityTokenFile(t *testing.T) {
+	type received struct{ identity, user string }
+	newServer := func(t *testing.T, requests *[]received) *httptest.Server {
+		t.Helper()
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, _, _ := r.BasicAuth()
+			*requests = append(*requests, received{identity: r.Header.Get("X-Dataplane-Identity"), user: user})
+			body := `{"workspaces":{}}`
+			if r.URL.Path == "/configuration/v2/namespaces/test-namespace/workspace-ids" {
+				body = `{"data":[]}`
+			}
+			_, err := w.Write([]byte(body))
+			require.NoError(t, err)
+		}))
+		t.Cleanup(ts.Close)
+		return ts
+	}
+	fetchBoth := func(t *testing.T, cpSDK *ControlPlane) {
+		t.Helper()
+		require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+		_, err := cpSDK.GetNamespaceWorkspaces(context.Background())
+		require.NoError(t, err)
+	}
+
+	for name, clientOptions := range map[string][]Option{
+		"default client": nil,
+		"custom client":  {WithRequestDoer(&http.Client{CheckRedirect: CheckRedirectDropIdentityToken})},
+	} {
+		t.Run("redirects with "+name, func(t *testing.T) {
+			tokenFile := filepath.Join(t.TempDir(), "token")
+			require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
+
+			var targetRequests []received
+			target := newServer(t, &targetRequests)
+			var finalIdentity string
+			origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Query().Get("redirect") {
+				case "cross-origin":
+					http.Redirect(w, r, target.URL+r.URL.Path, http.StatusFound)
+				case "same-origin":
+					http.Redirect(w, r, r.URL.Path+"?redirect=done", http.StatusFound)
+				default:
+					finalIdentity = r.Header.Get("X-Dataplane-Identity")
+					_, err := w.Write([]byte(`{"workspaces":{}}`))
+					require.NoError(t, err)
+				}
+			}))
+			t.Cleanup(origin.Close)
+
+			for _, redirect := range []string{"cross-origin", "same-origin"} {
+				cpSDK, err := New(append([]Option{
+					WithBaseUrl(origin.URL + "?redirect=" + redirect),
+					WithNamespaceIdentity("test-namespace", "test-secret"),
+					WithIdentityTokenFile(tokenFile),
+				}, clientOptions...)...)
+				require.NoError(t, err)
+				require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+			}
+
+			require.Len(t, targetRequests, 1)
+			require.Empty(t, targetRequests[0].identity, "cross-origin redirect target must not receive the token")
+			require.Equal(t, "token-1", finalIdentity, "same-origin redirect keeps the token")
+		})
+	}
+
+	t.Run("redirect limit", func(t *testing.T) {
+		via := make([]*http.Request, 10)
+		require.EqualError(t, CheckRedirectDropIdentityToken(&http.Request{}, via), "stopped after 10 redirects")
+	})
+
+	t.Run("workspace identity", func(t *testing.T) {
+		_, err := New(WithWorkspaceIdentity("token"), WithIdentityTokenFile("token-file"))
+		require.ErrorIs(t, err, ErrIdentityTokenFileWorkspaceIdentity)
+		_, err = New(WithIdentityTokenFile("token-file"), WithWorkspaceIdentity("token"))
+		require.ErrorIs(t, err, ErrIdentityTokenFileWorkspaceIdentity)
+	})
+
+	t.Run("file content is sent and rotation is picked up", func(t *testing.T) {
+		var requests []received
+		ts := newServer(t, &requests)
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1\n"), 0o600))
+
+		cpSDK, err := New(
+			WithBaseUrl(ts.URL),
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityTokenFile(tokenFile),
+			WithRequestDoer(http.DefaultClient),
+		)
+		require.NoError(t, err)
+
+		fetchBoth(t, cpSDK)
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-2"), 0o600))
+		fetchBoth(t, cpSDK)
+
+		require.Equal(t, []received{
+			{identity: "token-1", user: "test-secret"},
+			{identity: "token-1", user: "test-secret"},
+			{identity: "token-2", user: "test-secret"},
+			{identity: "token-2", user: "test-secret"},
+		}, requests)
+	})
+
+	for _, tc := range []struct {
+		name    string
+		options func(t *testing.T) []Option
+	}{
+		{name: "missing file", options: func(t *testing.T) []Option {
+			return []Option{WithIdentityTokenFile(filepath.Join(t.TempDir(), "missing"))}
+		}},
+		{name: "empty file", options: func(t *testing.T) []Option {
+			tokenFile := filepath.Join(t.TempDir(), "token")
+			require.NoError(t, os.WriteFile(tokenFile, []byte(" \n"), 0o600))
+			return []Option{WithIdentityTokenFile(tokenFile)}
+		}},
+		{name: "not set", options: func(*testing.T) []Option { return nil }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests []received
+			ts := newServer(t, &requests)
+
+			cpSDK, err := New(append([]Option{
+				WithBaseUrl(ts.URL),
+				WithNamespaceIdentity("test-namespace", "test-secret"),
+			}, tc.options(t)...)...)
+			require.NoError(t, err)
+
+			fetchBoth(t, cpSDK)
+			require.Equal(t, []received{{user: "test-secret"}, {user: "test-secret"}}, requests)
+		})
+	}
 }
 
 func TestIncrementalDefinitions(t *testing.T) {
