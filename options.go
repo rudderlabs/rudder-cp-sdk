@@ -11,6 +11,9 @@ type Option func(*ControlPlane) error
 
 var ErrIdentityMutuallyExclusive = fmt.Errorf("cannot set both workspace and namespace identity")
 
+// ErrIdentityTokenFileWorkspaceIdentity is returned by [New] when [WithIdentityTokenFile] is combined with a workspace identity.
+var ErrIdentityTokenFileWorkspaceIdentity = fmt.Errorf("identity token file is only supported with namespace identity")
+
 func WithWorkspaceIdentity(workspaceToken string) Option {
 	return func(cp *ControlPlane) error {
 		if cp.config.namespaceIdentity != nil {
@@ -61,9 +64,10 @@ func WithSecrets(s Secrets) Option {
 // The file is read on every namespace identity request, so a rotated token is picked up without restarting,
 // and its trimmed content is sent in the X-Dataplane-Identity header alongside the existing credentials.
 // If the file is missing, unreadable or empty, the request is sent without the header.
-// It has no effect with a workspace identity.
+// Combined with a workspace identity, [New] returns [ErrIdentityTokenFileWorkspaceIdentity].
 // The default HTTP client drops the header on redirects to a different scheme or host;
-// a RequestDoer set with [WithRequestDoer] applies its own redirect policy.
+// a RequestDoer set with [WithRequestDoer] applies its own redirect policy, and an [http.Client]
+// can get the same behaviour by setting [CheckRedirectDropIdentityToken] as its CheckRedirect.
 func WithIdentityTokenFile(path string) Option {
 	return func(cp *ControlPlane) error {
 		cp.config.identityTokenFile = path

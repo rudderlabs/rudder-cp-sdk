@@ -66,9 +66,12 @@ func New(options ...Option) (*ControlPlane, error) {
 			return nil, err
 		}
 	}
+	if cp.config.identityTokenFile != "" && cp.config.workspaceIdentity != nil {
+		return nil, ErrIdentityTokenFileWorkspaceIdentity
+	}
 	if cp.config.httpClient == nil {
 		client := httputil.DefaultHttpClient()
-		client.CheckRedirect = dropIdentityTokenOnCrossOriginRedirect
+		client.CheckRedirect = CheckRedirectDropIdentityToken
 		cp.config.httpClient = client
 	}
 	// set client based on identity
@@ -99,9 +102,11 @@ func New(options ...Option) (*ControlPlane, error) {
 	return cp, nil
 }
 
-// dropIdentityTokenOnCrossOriginRedirect keeps net/http's default redirect limit and removes the identity token header
-// when a redirect leaves the scheme and host of the original request, since net/http forwards custom headers.
-func dropIdentityTokenOnCrossOriginRedirect(req *http.Request, via []*http.Request) error {
+// CheckRedirectDropIdentityToken is an [http.Client] CheckRedirect function that keeps net/http's default limit of
+// 10 redirects and removes the identity token header when a redirect leaves the scheme and host of the original request,
+// since net/http forwards custom headers. The default HTTP client uses it; set it on your own client when passing one
+// with [WithRequestDoer] together with [WithIdentityTokenFile].
+func CheckRedirectDropIdentityToken(req *http.Request, via []*http.Request) error {
 	if len(via) >= 10 {
 		return errors.New("stopped after 10 redirects")
 	}
