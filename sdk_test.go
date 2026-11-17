@@ -425,7 +425,7 @@ func TestIdentityTokenFile(t *testing.T) {
 		require.ErrorIs(t, err, ErrIdentityTokenFileWorkspaceIdentity)
 	})
 
-	t.Run("file content replaces the secret and rotation is picked up", func(t *testing.T) {
+	t.Run("file content replaces the secret and is reused for a minute", func(t *testing.T) {
 		var requests []received
 		ts := newServer(t, &requests)
 		tokenFile := filepath.Join(t.TempDir(), "token")
@@ -446,9 +446,9 @@ func TestIdentityTokenFile(t *testing.T) {
 		require.Equal(t, []received{
 			{bearer: "token-1"},
 			{bearer: "token-1"},
-			{bearer: "token-2"},
-			{bearer: "token-2"},
-		}, requests)
+			{bearer: "token-1"},
+			{bearer: "token-1"},
+		}, requests, "a rotation within the minute is not read yet")
 	})
 
 	for _, tc := range []struct {

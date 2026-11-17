@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rudderlabs/rudder-go-kit/httputil"
@@ -25,6 +26,8 @@ type Client struct {
 	// IdentityTokenFile is the path of a file holding a workload identity token, sent as a Bearer token
 	// instead of the namespace secret. If empty, the namespace secret is sent.
 	IdentityTokenFile string
+
+	identityToken cachedToken
 }
 
 func (c *Client) GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error {
@@ -62,7 +65,7 @@ func (c *Client) GetWithAuth(ctx context.Context, path string, queryOpts ...base
 	if err != nil {
 		return nil, err
 	}
-	if token := c.identityToken(); token != "" {
+	if token := c.identityToken.get(c.IdentityTokenFile); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	} else {
 		req.SetBasicAuth(c.Identity.Secret, "")
@@ -70,15 +73,37 @@ func (c *Client) GetWithAuth(ctx context.Context, path string, queryOpts ...base
 	return req, nil
 }
 
-// identityToken reads the token file on every request since the token may be rotated.
-// An unset, unreadable or empty file returns an empty token.
-func (c *Client) identityToken() string {
-	if c.IdentityTokenFile == "" {
+// identityTokenMaxAge is how long a token read from the file is reused. The kubelet rewrites the file at about 80%
+// of the token's lifetime (8 of 10 minutes by default), so a token read under a minute ago is still valid.
+const identityTokenMaxAge = time.Minute
+
+// cachedToken reads a token file at most once per identityTokenMaxAge.
+type cachedToken struct {
+	mu     sync.Mutex
+	token  string
+	readAt time.Time
+	now    func() time.Time // nil means time.Now; set by tests
+}
+
+// get returns the token in path. An unset path, or no successful read yet, returns an empty token. A failed or
+// empty read keeps the last good token, which the kubelet only replaces with a newer one.
+func (t *cachedToken) get(path string) string {
+	if path == "" {
 		return ""
 	}
-	token, err := os.ReadFile(c.IdentityTokenFile)
-	if err != nil {
-		return ""
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	now := time.Now()
+	if t.now != nil {
+		now = t.now()
 	}
-	return strings.TrimSpace(string(token))
+	if t.token != "" && now.Sub(t.readAt) < identityTokenMaxAge {
+		return t.token
+	}
+	if data, err := os.ReadFile(path); err == nil {
+		if token := strings.TrimSpace(string(data)); token != "" {
+			t.token, t.readAt = token, now
+		}
+	}
+	return t.token
 }
