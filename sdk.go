@@ -2,6 +2,7 @@ package cpsdk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -69,7 +70,9 @@ func New(options ...Option) (*ControlPlane, error) {
 		return nil, ErrIdentityTokenFileWorkspaceIdentity
 	}
 	if cp.config.httpClient == nil {
-		cp.config.httpClient = httputil.DefaultHttpClient()
+		client := httputil.DefaultHttpClient()
+		client.CheckRedirect = keepAuthorizationOnOrigin
+		cp.config.httpClient = client
 	}
 	// set client based on identity
 	if cp.config.workspaceIdentity != nil {
@@ -97,4 +100,17 @@ func New(options ...Option) (*ControlPlane, error) {
 		return nil, fmt.Errorf("workspace or namespace identity must be set")
 	}
 	return cp, nil
+}
+
+// keepAuthorizationOnOrigin follows up to 10 redirects like net/http's default policy and removes the Authorization
+// header when a redirect leaves the scheme, host or port of the original request, where net/http only removes it for
+// a different host.
+func keepAuthorizationOnOrigin(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	if req.URL.Scheme != via[0].URL.Scheme || req.URL.Host != via[0].URL.Host {
+		req.Header.Del("Authorization")
+	}
+	return nil
 }

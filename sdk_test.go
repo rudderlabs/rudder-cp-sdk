@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -377,46 +378,61 @@ func TestIdentityTokenFile(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	for name, clientOptions := range map[string][]Option{
-		"default client": nil,
-		"custom client":  {WithRequestDoer(&http.Client{})},
-	} {
-		t.Run("redirects with "+name, func(t *testing.T) {
-			tokenFile := filepath.Join(t.TempDir(), "token")
-			require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
+	t.Run("redirects", func(t *testing.T) {
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
 
-			var targetRequests []received
-			target := newServer(t, &targetRequests)
-			var finalAuthorization string
-			origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				switch r.URL.Query().Get("redirect") {
-				case "cross-origin":
-					// net/http compares hosts without ports, so use a different host name for the same listener
-					http.Redirect(w, r, strings.Replace(target.URL, "127.0.0.1", "localhost", 1)+r.URL.Path, http.StatusFound)
-				case "same-origin":
-					http.Redirect(w, r, r.URL.Path+"?redirect=done", http.StatusFound)
-				default:
-					finalAuthorization = r.Header.Get("Authorization")
-					_, err := w.Write([]byte(`{"workspaces":{}}`))
-					assert.NoError(t, err)
-				}
-			}))
-			t.Cleanup(origin.Close)
+		var finalAuthorization string
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if to := r.URL.Query().Get("redirect"); to != "" {
+				http.Redirect(w, r, to+r.URL.Path, http.StatusFound)
+				return
+			}
+			finalAuthorization = r.Header.Get("Authorization")
+			_, err := w.Write([]byte(`{"workspaces":{}}`))
+			assert.NoError(t, err)
+		})
+		tlsServer := httptest.NewTLSServer("sub.example.com", handler)
+		t.Cleanup(tlsServer.Close)
+		plainServer := httptest.NewServer(handler)
+		t.Cleanup(plainServer.Close)
+		// https://example.com is the origin: port 80 reaches the plain server and any other address the TLS one,
+		// so a redirect can change only the scheme, the port or the host
+		transport := tlsServer.Client().Transport.(*http.Transport).Clone()
+		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			to := tlsServer.Listener.Addr().String()
+			if strings.HasSuffix(addr, ":80") {
+				to = plainServer.Listener.Addr().String()
+			}
+			return (&net.Dialer{}).DialContext(ctx, network, to)
+		}
 
-			for _, redirect := range []string{"cross-origin", "same-origin"} {
+		for _, tc := range []struct {
+			name, to, want string
+			options        []Option
+		}{
+			{name: "same origin", to: "https://example.com", want: "Bearer token-1"},
+			{name: "scheme downgrade", to: "http://example.com"},
+			{name: "different port", to: "https://example.com:8443"},
+			{name: "subdomain", to: "https://sub.example.com"},
+			{name: "different host", to: "http://example.org"},
+			// a caller-supplied client keeps its own redirect policy, and net/http drops the header for a different host
+			{name: "different host with a custom client", to: "http://example.org", options: []Option{WithRequestDoer(&http.Client{})}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				finalAuthorization = "not reached"
 				cpSDK, err := New(append([]Option{
-					WithBaseUrl(origin.URL + "?redirect=" + redirect),
+					WithBaseUrl("https://example.com?redirect=" + tc.to),
 					WithNamespaceIdentity("test-namespace", "test-secret"),
 					WithIdentityTokenFile(tokenFile),
-				}, clientOptions...)...)
+				}, tc.options...)...)
 				require.NoError(t, err)
+				cpSDK.config.httpClient.(*http.Client).Transport = transport
 				require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
-			}
-
-			require.Equal(t, []received{{}}, targetRequests, "cross-host redirect target must not receive the token")
-			require.Equal(t, "Bearer token-1", finalAuthorization, "same-host redirect keeps the token")
-		})
-	}
+				require.Equal(t, tc.want, finalAuthorization)
+			})
+		}
+	})
 
 	t.Run("workspace identity", func(t *testing.T) {
 		_, err := New(WithWorkspaceIdentity("token"), WithIdentityTokenFile("token-file"))

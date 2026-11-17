@@ -66,7 +66,7 @@ func WithSecrets(s Secrets) Option {
 // without restarting. Until a read succeeds with a non-empty file, the namespace secret is sent as before; after
 // that, a failed or empty read keeps the last token read.
 // Combined with a workspace identity, [New] returns [ErrIdentityTokenFileWorkspaceIdentity].
-// An [http.Client] drops the Authorization header on redirects to a different host.
+// See [WithRequestDoer] for how redirects are followed.
 func WithIdentityTokenFile(path string) Option {
 	return func(cp *ControlPlane) error {
 		cp.config.identityTokenFile = path
@@ -74,6 +74,9 @@ func WithIdentityTokenFile(path string) Option {
 	}
 }
 
+// WithRequestDoer sets the RequestDoer used to send control plane requests.
+// Without it, the SDK uses its own HTTP client, which follows redirects but sends the Authorization header only while
+// the scheme, host and port match the original request. A RequestDoer set here applies its own redirect policy.
 func WithRequestDoer(reqDoer RequestDoer) Option {
 	return func(cp *ControlPlane) error {
 		cp.config.httpClient = reqDoer
