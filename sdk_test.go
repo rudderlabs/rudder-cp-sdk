@@ -3,6 +3,7 @@ package cpsdk
 import (
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"iter"
@@ -407,25 +408,32 @@ func TestIdentityTokenFile(t *testing.T) {
 			return (&net.Dialer{}).DialContext(ctx, network, to)
 		}
 
+		basic := "Basic " + base64.StdEncoding.EncodeToString([]byte("test-secret:"))
 		for _, tc := range []struct {
-			name, to, want string
-			options        []Option
+			name, to, want   string
+			withoutTokenFile bool
+			options          []Option
 		}{
 			{name: "same origin", to: "https://example.com", want: "Bearer token-1"},
 			{name: "scheme downgrade", to: "http://example.com"},
 			{name: "different port", to: "https://example.com:8443"},
 			{name: "subdomain", to: "https://sub.example.com"},
 			{name: "different host", to: "http://example.org"},
-			// a caller-supplied client keeps its own redirect policy, and net/http drops the header for a different host
-			{name: "different host with a custom client", to: "http://example.org", options: []Option{WithRequestDoer(&http.Client{})}},
+			// a caller-supplied client keeps its own redirect policy, and net/http keeps the header for a subdomain
+			{name: "subdomain with a custom client", to: "https://sub.example.com", want: "Bearer token-1", options: []Option{WithRequestDoer(&http.Client{})}},
+			{name: "same origin without a token file", to: "https://example.com", want: basic, withoutTokenFile: true},
+			{name: "scheme downgrade without a token file", to: "http://example.com", withoutTokenFile: true},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				finalAuthorization = "not reached"
-				cpSDK, err := New(append([]Option{
+				options := []Option{
 					WithBaseUrl("https://example.com?redirect=" + tc.to),
 					WithNamespaceIdentity("test-namespace", "test-secret"),
-					WithIdentityTokenFile(tokenFile),
-				}, tc.options...)...)
+				}
+				if !tc.withoutTokenFile {
+					options = append(options, WithIdentityTokenFile(tokenFile))
+				}
+				cpSDK, err := New(append(options, tc.options...)...)
 				require.NoError(t, err)
 				cpSDK.config.httpClient.(*http.Client).Transport = transport
 				require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
