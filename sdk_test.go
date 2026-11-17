@@ -355,8 +355,8 @@ func TestIdentityTokenFile(t *testing.T) {
 		t.Helper()
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, _, _ := r.BasicAuth()
-			bearer, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-			if user != "" {
+			bearer, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if !ok {
 				bearer = ""
 			}
 			*requests = append(*requests, received{bearer: bearer, user: user})
@@ -365,7 +365,7 @@ func TestIdentityTokenFile(t *testing.T) {
 				body = `{"data":[]}`
 			}
 			_, err := w.Write([]byte(body))
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}))
 		t.Cleanup(ts.Close)
 		return ts
@@ -398,7 +398,7 @@ func TestIdentityTokenFile(t *testing.T) {
 				default:
 					finalAuthorization = r.Header.Get("Authorization")
 					_, err := w.Write([]byte(`{"workspaces":{}}`))
-					require.NoError(t, err)
+					assert.NoError(t, err)
 				}
 			}))
 			t.Cleanup(origin.Close)
