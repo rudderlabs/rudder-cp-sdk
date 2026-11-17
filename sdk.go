@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/rudderlabs/rudder-go-kit/httputil"
@@ -109,8 +110,23 @@ func keepAuthorizationOnOrigin(req *http.Request, via []*http.Request) error {
 	if len(via) >= 10 {
 		return errors.New("stopped after 10 redirects")
 	}
-	if req.URL.Scheme != via[0].URL.Scheme || req.URL.Host != via[0].URL.Host {
+	to, from := req.URL, via[0].URL
+	if !strings.EqualFold(to.Scheme, from.Scheme) || !strings.EqualFold(to.Hostname(), from.Hostname()) || effectivePort(to) != effectivePort(from) {
 		req.Header.Del("Authorization")
 	}
 	return nil
+}
+
+// effectivePort returns the URL's port, or the default port of its scheme when it has none.
+func effectivePort(u *url.URL) string {
+	if port := u.Port(); port != "" {
+		return port
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "http":
+		return "80"
+	case "https":
+		return "443"
+	}
+	return ""
 }

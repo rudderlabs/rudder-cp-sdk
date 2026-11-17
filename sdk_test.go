@@ -393,7 +393,8 @@ func TestIdentityTokenFile(t *testing.T) {
 			_, err := w.Write([]byte(`{"workspaces":{}}`))
 			assert.NoError(t, err)
 		})
-		tlsServer := httptest.NewTLSServer("sub.example.com", handler)
+		// the helper splits the host on commas into the certificate's names
+		tlsServer := httptest.NewTLSServer("sub.example.com,example.org", handler)
 		t.Cleanup(tlsServer.Close)
 		plainServer := httptest.NewServer(handler)
 		t.Cleanup(plainServer.Close)
@@ -415,10 +416,12 @@ func TestIdentityTokenFile(t *testing.T) {
 			options          []Option
 		}{
 			{name: "same origin", to: "https://example.com", want: "Bearer token-1"},
+			{name: "same origin with the default port", to: "https://example.com:443", want: "Bearer token-1"},
+			{name: "same origin with an upper-case host", to: "https://EXAMPLE.com", want: "Bearer token-1"},
 			{name: "scheme downgrade", to: "http://example.com"},
 			{name: "different port", to: "https://example.com:8443"},
 			{name: "subdomain", to: "https://sub.example.com"},
-			{name: "different host", to: "http://example.org"},
+			{name: "different host", to: "https://example.org"},
 			// a caller-supplied client keeps its own redirect policy, and net/http keeps the header for a subdomain
 			{name: "subdomain with a custom client", to: "https://sub.example.com", want: "Bearer token-1", options: []Option{WithRequestDoer(&http.Client{})}},
 			{name: "same origin without a token file", to: "https://example.com", want: basic, withoutTokenFile: true},
