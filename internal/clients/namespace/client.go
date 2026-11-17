@@ -15,9 +15,6 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
 )
 
-// IdentityTokenHeader carries the workload identity token read from [Client.IdentityTokenFile].
-const IdentityTokenHeader = "X-Dataplane-Identity"
-
 type Client struct {
 	*base.Client
 
@@ -25,8 +22,8 @@ type Client struct {
 	// Secrets controls whether account secrets are embedded in workspace configs responses.
 	// If empty, the control plane's default applies.
 	Secrets string
-	// IdentityTokenFile is the path of a file holding a workload identity token, sent in the X-Dataplane-Identity header.
-	// If empty, no identity token is sent.
+	// IdentityTokenFile is the path of a file holding a workload identity token, sent as a Bearer token
+	// instead of the namespace secret. If empty, the namespace secret is sent.
 	IdentityTokenFile string
 }
 
@@ -65,14 +62,23 @@ func (c *Client) GetWithAuth(ctx context.Context, path string, queryOpts ...base
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(c.Identity.Secret, "")
-	if c.IdentityTokenFile != "" {
-		// read on every request since the token file may be rotated; an unreadable or empty file sends no header
-		if token, err := os.ReadFile(c.IdentityTokenFile); err == nil {
-			if t := strings.TrimSpace(string(token)); t != "" {
-				req.Header.Set(IdentityTokenHeader, t)
-			}
-		}
+	if token := c.identityToken(); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	} else {
+		req.SetBasicAuth(c.Identity.Secret, "")
 	}
 	return req, nil
+}
+
+// identityToken reads the token file on every request since the token may be rotated.
+// An unset, unreadable or empty file returns an empty token.
+func (c *Client) identityToken() string {
+	if c.IdentityTokenFile == "" {
+		return ""
+	}
+	token, err := os.ReadFile(c.IdentityTokenFile)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(token))
 }

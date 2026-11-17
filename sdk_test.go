@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -349,12 +350,16 @@ func TestSecrets(t *testing.T) {
 }
 
 func TestIdentityTokenFile(t *testing.T) {
-	type received struct{ identity, user string }
+	type received struct{ bearer, user string }
 	newServer := func(t *testing.T, requests *[]received) *httptest.Server {
 		t.Helper()
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, _, _ := r.BasicAuth()
-			*requests = append(*requests, received{identity: r.Header.Get("X-Dataplane-Identity"), user: user})
+			bearer, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if user != "" {
+				bearer = ""
+			}
+			*requests = append(*requests, received{bearer: bearer, user: user})
 			body := `{"workspaces":{}}`
 			if r.URL.Path == "/configuration/v2/namespaces/test-namespace/workspace-ids" {
 				body = `{"data":[]}`
@@ -374,7 +379,7 @@ func TestIdentityTokenFile(t *testing.T) {
 
 	for name, clientOptions := range map[string][]Option{
 		"default client": nil,
-		"custom client":  {WithRequestDoer(&http.Client{CheckRedirect: CheckRedirectDropIdentityToken})},
+		"custom client":  {WithRequestDoer(&http.Client{})},
 	} {
 		t.Run("redirects with "+name, func(t *testing.T) {
 			tokenFile := filepath.Join(t.TempDir(), "token")
@@ -382,15 +387,16 @@ func TestIdentityTokenFile(t *testing.T) {
 
 			var targetRequests []received
 			target := newServer(t, &targetRequests)
-			var finalIdentity string
+			var finalAuthorization string
 			origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Query().Get("redirect") {
 				case "cross-origin":
-					http.Redirect(w, r, target.URL+r.URL.Path, http.StatusFound)
+					// net/http compares hosts without ports, so use a different host name for the same listener
+					http.Redirect(w, r, strings.Replace(target.URL, "127.0.0.1", "localhost", 1)+r.URL.Path, http.StatusFound)
 				case "same-origin":
 					http.Redirect(w, r, r.URL.Path+"?redirect=done", http.StatusFound)
 				default:
-					finalIdentity = r.Header.Get("X-Dataplane-Identity")
+					finalAuthorization = r.Header.Get("Authorization")
 					_, err := w.Write([]byte(`{"workspaces":{}}`))
 					require.NoError(t, err)
 				}
@@ -407,16 +413,10 @@ func TestIdentityTokenFile(t *testing.T) {
 				require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
 			}
 
-			require.Len(t, targetRequests, 1)
-			require.Empty(t, targetRequests[0].identity, "cross-origin redirect target must not receive the token")
-			require.Equal(t, "token-1", finalIdentity, "same-origin redirect keeps the token")
+			require.Equal(t, []received{{}}, targetRequests, "cross-host redirect target must not receive the token")
+			require.Equal(t, "Bearer token-1", finalAuthorization, "same-host redirect keeps the token")
 		})
 	}
-
-	t.Run("redirect limit", func(t *testing.T) {
-		via := make([]*http.Request, 10)
-		require.EqualError(t, CheckRedirectDropIdentityToken(&http.Request{}, via), "stopped after 10 redirects")
-	})
 
 	t.Run("workspace identity", func(t *testing.T) {
 		_, err := New(WithWorkspaceIdentity("token"), WithIdentityTokenFile("token-file"))
@@ -425,7 +425,7 @@ func TestIdentityTokenFile(t *testing.T) {
 		require.ErrorIs(t, err, ErrIdentityTokenFileWorkspaceIdentity)
 	})
 
-	t.Run("file content is sent and rotation is picked up", func(t *testing.T) {
+	t.Run("file content replaces the secret and rotation is picked up", func(t *testing.T) {
 		var requests []received
 		ts := newServer(t, &requests)
 		tokenFile := filepath.Join(t.TempDir(), "token")
@@ -444,10 +444,10 @@ func TestIdentityTokenFile(t *testing.T) {
 		fetchBoth(t, cpSDK)
 
 		require.Equal(t, []received{
-			{identity: "token-1", user: "test-secret"},
-			{identity: "token-1", user: "test-secret"},
-			{identity: "token-2", user: "test-secret"},
-			{identity: "token-2", user: "test-secret"},
+			{bearer: "token-1"},
+			{bearer: "token-1"},
+			{bearer: "token-2"},
+			{bearer: "token-2"},
 		}, requests)
 	})
 

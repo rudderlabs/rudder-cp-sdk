@@ -62,12 +62,10 @@ func WithSecrets(s Secrets) Option {
 
 // WithIdentityTokenFile sets the path of a file holding a workload identity token.
 // The file is read on every namespace identity request, so a rotated token is picked up without restarting,
-// and its trimmed content is sent in the X-Dataplane-Identity header alongside the existing credentials.
-// If the file is missing, unreadable or empty, the request is sent without the header.
+// and its trimmed content is sent as "Authorization: Bearer <token>" instead of the namespace secret.
+// If the file is missing, unreadable or empty, the namespace secret is sent as before.
 // Combined with a workspace identity, [New] returns [ErrIdentityTokenFileWorkspaceIdentity].
-// The default HTTP client drops the header on redirects to a different scheme or host;
-// a RequestDoer set with [WithRequestDoer] applies its own redirect policy, and an [http.Client]
-// can get the same behaviour by setting [CheckRedirectDropIdentityToken] as its CheckRedirect.
+// An [http.Client] drops the Authorization header on redirects to a different host.
 func WithIdentityTokenFile(path string) Option {
 	return func(cp *ControlPlane) error {
 		cp.config.identityTokenFile = path
