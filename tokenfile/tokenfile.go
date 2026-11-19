@@ -10,8 +10,9 @@ import (
 	"time"
 )
 
-// With the 600 s token lifetime we configure, the kubelet can leave a ~570 s old token; reusing it 10 s more stays
-// under the 600 s + 30 s skew verifiers allow, while the file stays readable.
+// maxAge is how long a token read from the file is reused. The kubelet refreshes a projected token on a pod sync once
+// it is past ~80% of its lifetime, so with the 600 s lifetime our operator sets the file can hold a ~570 s old token;
+// 10 s more stays under the verifiers' 600 s + 30 s skew while the file stays readable. The 1 h default leaves more.
 const maxAge = 10 * time.Second
 
 // Token is a token read from a file. It is safe for concurrent use.
