@@ -70,7 +70,7 @@ func WithSecrets(s Secrets) Option {
 // "Authorization: Bearer <token>" instead of the namespace secret on namespace identity requests.
 // [New] reads the file and returns an error if it can't be read or is empty. The file is then read again once the
 // token in use is a minute old, so a rotated token is picked up without restarting; see [tokenfile.Token.Get].
-// An empty path sets no token. Combined with a workspace identity, [New] returns [ErrIdentityTokenWorkspaceIdentity],
+// An empty path sets no token and clears any token set by an earlier option. Combined with a workspace identity, [New] returns [ErrIdentityTokenWorkspaceIdentity],
 // and combined with [WithIdentityToken], [ErrIdentityTokenMutuallyExclusive].
 func WithIdentityTokenFile(path string) Option {
 	if path == "" {
@@ -81,10 +81,11 @@ func WithIdentityTokenFile(path string) Option {
 
 // WithIdentityToken is like [WithIdentityTokenFile] for a [tokenfile.Token] that can be shared with other clients.
 // [New] loads it with [tokenfile.Token.Load], so it returns an error if the file can't be read or is empty; the
-// caller may have loaded it already. A nil token sets no token.
+// caller may have loaded it already. A nil token sets no token and clears any token set by an earlier option.
 func WithIdentityToken(t *tokenfile.Token) Option {
 	return func(cp *ControlPlane) error {
 		if t == nil {
+			cp.config.identityToken = nil
 			return nil
 		}
 		if cp.config.identityToken != nil {
