@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-// The kubelet can leave a token close to its expiry in the file, so it is reused only briefly; a re-read is a local file read.
+// With the 600 s token lifetime we configure, the kubelet can leave a ~570 s old token; reusing it 10 s more stays
+// under the 600 s + 30 s skew verifiers allow, while the file stays readable.
 const maxAge = 10 * time.Second
 
 // Token is a token read from a file. It is safe for concurrent use.
