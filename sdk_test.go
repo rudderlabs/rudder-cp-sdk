@@ -415,6 +415,14 @@ func TestIdentityToken(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("unloaded token on a missing file", func(t *testing.T) {
+		_, err := New(
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityToken(tokenfile.New(filepath.Join(t.TempDir(), "missing"))),
+		)
+		require.Error(t, err)
+	})
+
 	t.Run("caller-loaded token", func(t *testing.T) {
 		var requests []received
 		ts := newServer(t, &requests)
