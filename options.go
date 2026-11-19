@@ -79,7 +79,8 @@ func WithIdentityTokenFile(path string) Option {
 }
 
 // WithIdentityToken is like [WithIdentityTokenFile] for a token the caller has already loaded with
-// [tokenfile.Token.Load], so it can be shared with other clients. A nil token sets no token.
+// [tokenfile.Token.Load], so it can be shared with other clients. A nil token sets no token. [New] returns an error
+// if the token has no value.
 func WithIdentityToken(t *tokenfile.Token) Option {
 	return func(cp *ControlPlane) error {
 		cp.config.identityToken = t

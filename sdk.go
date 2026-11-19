@@ -2,6 +2,7 @@ package cpsdk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -78,6 +79,9 @@ func New(options ...Option) (*ControlPlane, error) {
 		if err := cp.config.identityToken.Load(); err != nil {
 			return nil, fmt.Errorf("loading identity token: %w", err)
 		}
+	}
+	if cp.config.identityToken != nil && cp.config.identityToken.Get() == "" {
+		return nil, errors.New("identity token not loaded")
 	}
 	if cp.config.httpClient == nil {
 		cp.config.httpClient = httputil.DefaultHttpClient()
