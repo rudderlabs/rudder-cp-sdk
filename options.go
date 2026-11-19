@@ -5,14 +5,19 @@ import (
 	"net/url"
 
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
+	"github.com/rudderlabs/rudder-cp-sdk/tokenfile"
 )
 
 type Option func(*ControlPlane) error
 
 var ErrIdentityMutuallyExclusive = fmt.Errorf("cannot set both workspace and namespace identity")
 
-// ErrIdentityTokenFileWorkspaceIdentity is returned by [New] when [WithIdentityTokenFile] is combined with a workspace identity.
-var ErrIdentityTokenFileWorkspaceIdentity = fmt.Errorf("identity token file is only supported with namespace identity")
+// ErrIdentityTokenWorkspaceIdentity is returned by [New] when [WithIdentityTokenFile] or [WithIdentityToken] is
+// combined with a workspace identity.
+var ErrIdentityTokenWorkspaceIdentity = fmt.Errorf("identity token is only supported with namespace identity")
+
+// ErrIdentityTokenMutuallyExclusive is returned by [New] when both [WithIdentityTokenFile] and [WithIdentityToken] are set.
+var ErrIdentityTokenMutuallyExclusive = fmt.Errorf("cannot set both identity token file and identity token")
 
 func WithWorkspaceIdentity(workspaceToken string) Option {
 	return func(cp *ControlPlane) error {
@@ -60,16 +65,24 @@ func WithSecrets(s Secrets) Option {
 	}
 }
 
-// WithIdentityTokenFile sets the path of a file holding a workload identity token.
-// Its trimmed content is sent as "Authorization: Bearer <token>" instead of the namespace secret on namespace
-// identity requests. The file is re-read once the token in use is a minute old, so a rotated token is picked up
-// without restarting. Until a read succeeds with a non-empty file, the namespace secret is sent as before; after
-// that, a failed or empty read keeps the last token read.
-// Combined with a workspace identity, [New] returns [ErrIdentityTokenFileWorkspaceIdentity].
-// See [WithRequestDoer] for how redirects are followed.
+// WithIdentityTokenFile sets the path of a file holding a workload identity token, sent as
+// "Authorization: Bearer <token>" instead of the namespace secret on namespace identity requests.
+// [New] reads the file and returns an error if it can't be read or is empty. The file is then read again once the
+// token in use is a minute old, so a rotated token is picked up without restarting; see [tokenfile.Token.Get].
+// An empty path sets no token. Combined with a workspace identity, [New] returns [ErrIdentityTokenWorkspaceIdentity],
+// and combined with [WithIdentityToken], [ErrIdentityTokenMutuallyExclusive].
 func WithIdentityTokenFile(path string) Option {
 	return func(cp *ControlPlane) error {
 		cp.config.identityTokenFile = path
+		return nil
+	}
+}
+
+// WithIdentityToken is like [WithIdentityTokenFile] for a token the caller has already loaded with
+// [tokenfile.Token.Load], so it can be shared with other clients. A nil token sets no token.
+func WithIdentityToken(t *tokenfile.Token) Option {
+	return func(cp *ControlPlane) error {
+		cp.config.identityToken = t
 		return nil
 	}
 }

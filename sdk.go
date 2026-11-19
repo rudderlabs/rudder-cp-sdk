@@ -15,6 +15,7 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/namespace"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/workspace"
+	"github.com/rudderlabs/rudder-cp-sdk/tokenfile"
 )
 
 const (
@@ -42,6 +43,7 @@ type ControlPlane struct {
 		secrets                Secrets
 		incrementalDefinitions bool
 		identityTokenFile      string
+		identityToken          *tokenfile.Token
 	}
 }
 
@@ -67,8 +69,17 @@ func New(options ...Option) (*ControlPlane, error) {
 			return nil, err
 		}
 	}
-	if cp.config.identityTokenFile != "" && cp.config.workspaceIdentity != nil {
-		return nil, ErrIdentityTokenFileWorkspaceIdentity
+	if (cp.config.identityTokenFile != "" || cp.config.identityToken != nil) && cp.config.workspaceIdentity != nil {
+		return nil, ErrIdentityTokenWorkspaceIdentity
+	}
+	if cp.config.identityTokenFile != "" {
+		if cp.config.identityToken != nil {
+			return nil, ErrIdentityTokenMutuallyExclusive
+		}
+		cp.config.identityToken = tokenfile.New(cp.config.identityTokenFile)
+		if err := cp.config.identityToken.Load(); err != nil {
+			return nil, fmt.Errorf("loading identity token: %w", err)
+		}
 	}
 	if cp.config.httpClient == nil {
 		client := httputil.DefaultHttpClient()
@@ -92,10 +103,10 @@ func New(options ...Option) (*ControlPlane, error) {
 			baseUrl, _ = url.Parse(defaultNamespaceIdentityBaseURL)
 		}
 		cp.Client = &namespace.Client{
-			Client:            &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
-			Identity:          cp.config.namespaceIdentity,
-			Secrets:           string(cp.config.secrets),
-			IdentityTokenFile: cp.config.identityTokenFile,
+			Client:        &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
+			Identity:      cp.config.namespaceIdentity,
+			Secrets:       string(cp.config.secrets),
+			IdentityToken: cp.config.identityToken,
 		}
 	} else {
 		return nil, fmt.Errorf("workspace or namespace identity must be set")

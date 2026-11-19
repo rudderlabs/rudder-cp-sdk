@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io/fs"
 	"iter"
 	"net"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/diff"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-cp-sdk/poller"
+	"github.com/rudderlabs/rudder-cp-sdk/tokenfile"
 )
 
 const updatedAfterTimeFormat = "2006-01-02T15:04:05.000Z"
@@ -351,7 +353,7 @@ func TestSecrets(t *testing.T) {
 	})
 }
 
-func TestIdentityTokenFile(t *testing.T) {
+func TestIdentityToken(t *testing.T) {
 	type received struct{ bearer, user string }
 	newServer := func(t *testing.T, requests *[]received) *httptest.Server {
 		t.Helper()
@@ -446,10 +448,58 @@ func TestIdentityTokenFile(t *testing.T) {
 	})
 
 	t.Run("workspace identity", func(t *testing.T) {
-		_, err := New(WithWorkspaceIdentity("token"), WithIdentityTokenFile("token-file"))
-		require.ErrorIs(t, err, ErrIdentityTokenFileWorkspaceIdentity)
-		_, err = New(WithIdentityTokenFile("token-file"), WithWorkspaceIdentity("token"))
-		require.ErrorIs(t, err, ErrIdentityTokenFileWorkspaceIdentity)
+		for _, tokenOption := range []Option{WithIdentityTokenFile("token-file"), WithIdentityToken(tokenfile.New("token-file"))} {
+			_, err := New(WithWorkspaceIdentity("token"), tokenOption)
+			require.ErrorIs(t, err, ErrIdentityTokenWorkspaceIdentity)
+			_, err = New(tokenOption, WithWorkspaceIdentity("token"))
+			require.ErrorIs(t, err, ErrIdentityTokenWorkspaceIdentity)
+		}
+	})
+
+	t.Run("token file and token", func(t *testing.T) {
+		_, err := New(
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityTokenFile("token-file"),
+			WithIdentityToken(tokenfile.New("token-file")),
+		)
+		require.ErrorIs(t, err, ErrIdentityTokenMutuallyExclusive)
+	})
+
+	t.Run("missing file", func(t *testing.T) {
+		_, err := New(
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityTokenFile(filepath.Join(t.TempDir(), "missing")),
+		)
+		require.ErrorIs(t, err, fs.ErrNotExist)
+	})
+
+	t.Run("empty file", func(t *testing.T) {
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte(" \n"), 0o600))
+		_, err := New(
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityTokenFile(tokenFile),
+		)
+		require.Error(t, err)
+	})
+
+	t.Run("caller-loaded token", func(t *testing.T) {
+		var requests []received
+		ts := newServer(t, &requests)
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
+		token := tokenfile.New(tokenFile)
+		require.NoError(t, token.Load())
+
+		cpSDK, err := New(
+			WithBaseUrl(ts.URL),
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityToken(token),
+		)
+		require.NoError(t, err)
+
+		fetchBoth(t, cpSDK)
+		require.Equal(t, []received{{bearer: "token-1"}, {bearer: "token-1"}}, requests)
 	})
 
 	t.Run("file content replaces the secret and is reused for a minute", func(t *testing.T) {
@@ -480,17 +530,11 @@ func TestIdentityTokenFile(t *testing.T) {
 
 	for _, tc := range []struct {
 		name    string
-		options func(t *testing.T) []Option
+		options []Option
 	}{
-		{name: "missing file", options: func(t *testing.T) []Option {
-			return []Option{WithIdentityTokenFile(filepath.Join(t.TempDir(), "missing"))}
-		}},
-		{name: "empty file", options: func(t *testing.T) []Option {
-			tokenFile := filepath.Join(t.TempDir(), "token")
-			require.NoError(t, os.WriteFile(tokenFile, []byte(" \n"), 0o600))
-			return []Option{WithIdentityTokenFile(tokenFile)}
-		}},
-		{name: "not set", options: func(*testing.T) []Option { return nil }},
+		{name: "not set"},
+		{name: "empty path", options: []Option{WithIdentityTokenFile("")}},
+		{name: "nil token", options: []Option{WithIdentityToken(nil)}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var requests []received
@@ -499,7 +543,7 @@ func TestIdentityTokenFile(t *testing.T) {
 			cpSDK, err := New(append([]Option{
 				WithBaseUrl(ts.URL),
 				WithNamespaceIdentity("test-namespace", "test-secret"),
-			}, tc.options(t)...)...)
+			}, tc.options...)...)
 			require.NoError(t, err)
 
 			fetchBoth(t, cpSDK)
