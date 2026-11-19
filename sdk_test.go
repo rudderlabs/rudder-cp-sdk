@@ -353,7 +353,7 @@ func TestSecrets(t *testing.T) {
 
 func TestIdentityToken(t *testing.T) {
 	type received struct{ bearer, user string }
-	newServer := func(t *testing.T, requests *[]received) *httptest.Server {
+	newServer := func(t *testing.T, requests *[]received, firstStatus int) *httptest.Server {
 		t.Helper()
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, _, _ := r.BasicAuth()
@@ -362,6 +362,10 @@ func TestIdentityToken(t *testing.T) {
 				bearer = ""
 			}
 			*requests = append(*requests, received{bearer: bearer, user: user})
+			if len(*requests) == 1 && firstStatus != http.StatusOK {
+				w.WriteHeader(firstStatus)
+				return
+			}
 			body := `{"workspaces":{}}`
 			if r.URL.Path == "/configuration/v2/namespaces/test-namespace/workspace-ids" {
 				body = `{"data":[]}`
@@ -425,7 +429,7 @@ func TestIdentityToken(t *testing.T) {
 
 	t.Run("caller-loaded token", func(t *testing.T) {
 		var requests []received
-		ts := newServer(t, &requests)
+		ts := newServer(t, &requests, http.StatusOK)
 		tokenFile := filepath.Join(t.TempDir(), "token")
 		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
 		token := tokenfile.New(tokenFile)
@@ -444,7 +448,7 @@ func TestIdentityToken(t *testing.T) {
 
 	t.Run("file content replaces the secret and is reused briefly", func(t *testing.T) {
 		var requests []received
-		ts := newServer(t, &requests)
+		ts := newServer(t, &requests, http.StatusOK)
 		tokenFile := filepath.Join(t.TempDir(), "token")
 		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1\n"), 0o600))
 
@@ -468,37 +472,30 @@ func TestIdentityToken(t *testing.T) {
 		}, requests, "a rotation within the reuse window is not read yet")
 	})
 
-	t.Run("a refused token is sent again instead of the namespace secret", func(t *testing.T) {
-		var authorizations []string
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authorizations = append(authorizations, r.Header.Get("Authorization"))
-			if len(authorizations) == 1 {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			_, err := w.Write([]byte(`{"workspaces":{}}`))
-			assert.NoError(t, err)
-		}))
-		t.Cleanup(ts.Close)
-		tokenFile := filepath.Join(t.TempDir(), "token")
-		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
+	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden} {
+		t.Run(fmt.Sprintf("a token refused with %d is sent again instead of the namespace secret", status), func(t *testing.T) {
+			var requests []received
+			ts := newServer(t, &requests, status)
+			tokenFile := filepath.Join(t.TempDir(), "token")
+			require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
 
-		cpSDK, err := New(
-			WithBaseUrl(ts.URL),
-			WithNamespaceIdentity("test-namespace", "test-secret"),
-			WithIdentityTokenFile(tokenFile),
-		)
-		require.NoError(t, err)
+			cpSDK, err := New(
+				WithBaseUrl(ts.URL),
+				WithNamespaceIdentity("test-namespace", "test-secret"),
+				WithIdentityTokenFile(tokenFile),
+			)
+			require.NoError(t, err)
 
-		err = cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{})
-		statusErr, ok := errors.AsType[*UnexpectedStatusCodeError](err)
-		require.True(t, ok, "the first request should fail with the status code error, got %v", err)
-		require.Equal(t, http.StatusUnauthorized, statusErr.StatusCode)
-		require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+			err = cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{})
+			statusErr, ok := errors.AsType[*UnexpectedStatusCodeError](err)
+			require.True(t, ok, "the first request should fail with the status code error, got %v", err)
+			require.Equal(t, status, statusErr.StatusCode)
+			require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
 
-		require.Equal(t, []string{"Bearer token-1", "Bearer token-1"}, authorizations,
-			"both requests should carry the token and never fall back to the namespace secret")
-	})
+			require.Equal(t, []received{{bearer: "token-1"}, {bearer: "token-1"}}, requests,
+				"both requests should carry the token and never fall back to the namespace secret")
+		})
+	}
 
 	for _, tc := range []struct {
 		name    string
@@ -512,7 +509,7 @@ func TestIdentityToken(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var requests []received
-			ts := newServer(t, &requests)
+			ts := newServer(t, &requests, http.StatusOK)
 
 			cpSDK, err := New(append([]Option{
 				WithBaseUrl(ts.URL),
