@@ -31,8 +31,8 @@ github.com/pelletier/go-toml/v2 v2.4.3/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
-github.com/rudderlabs/rudder-go-kit v0.84.2 h1:2BFc+3fg6zJcCcCdvBSty5exQ0qgNrbLIzA7R1Gdtwc=
-github.com/rudderlabs/rudder-go-kit v0.84.2/go.mod h1:BBUZxfSKPpZWTfT8a9oihkXQGHHBWKXPF0Lm//Z12pg=
+github.com/rudderlabs/rudder-go-kit v0.86.0 h1:SbVwBw269DzzY/YZIdGZVsYZG+nALqbirOX/0wgxNaU=
+github.com/rudderlabs/rudder-go-kit v0.86.0/go.mod h1:PiQdizjzyZO7Q1X5uV7NFHODeBtoVl7oUGW6pM9Tl2E=
 github.com/rudderlabs/rudder-observability-kit v0.0.8 h1:K/4sSuvLHy6P2hSvDpLx6zPl1RvngvmVdpI1KEfbUj8=
 github.com/rudderlabs/rudder-observability-kit v0.0.8/go.mod h1:kACGy+jiPLV/DUz9YukipOW3ysvxklb41shPB54fxg0=
 github.com/rudderlabs/sonnet v1.0.2 h1:nPfmDKD9gUwT571Dwtcsx0VIglSchvyNjuRLju4Xs3s=
