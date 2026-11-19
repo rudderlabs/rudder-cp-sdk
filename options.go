@@ -5,11 +5,15 @@ import (
 	"net/url"
 
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
+	"github.com/rudderlabs/rudder-cp-sdk/tokenfile"
 )
 
 type Option func(*ControlPlane) error
 
 var ErrIdentityMutuallyExclusive = fmt.Errorf("cannot set both workspace and namespace identity")
+
+// ErrIdentityTokenWorkspaceIdentity is returned by [New] when [WithIdentityToken] is combined with a workspace identity.
+var ErrIdentityTokenWorkspaceIdentity = fmt.Errorf("identity token is only supported with namespace identity")
 
 func WithWorkspaceIdentity(workspaceToken string) Option {
 	return func(cp *ControlPlane) error {
@@ -54,6 +58,21 @@ func WithSecrets(s Secrets) Option {
 		default:
 			return fmt.Errorf("invalid secrets option: %q", s)
 		}
+	}
+}
+
+// WithIdentityToken sets a workload identity token, read from a file, sent as "Authorization: Bearer <token>"
+// instead of the namespace secret on namespace identity requests; use [tokenfile.New] for a token file path.
+// A nil token sets none, and a later call replaces an earlier one.
+// Set it only once the control plane accepts the token: a refused token gets a 401 with no fallback to the secret.
+// [New] loads it with [tokenfile.Token.Load], so it returns an error if the file can't be read or is empty; the
+// caller may have loaded it already. The file is then read again once the token's reuse window has passed, so a
+// rotated token is picked up without restarting; see [tokenfile.Token.Get]. Combined with a workspace identity,
+// [New] returns [ErrIdentityTokenWorkspaceIdentity].
+func WithIdentityToken(t *tokenfile.Token) Option {
+	return func(cp *ControlPlane) error {
+		cp.config.identityToken = t
+		return nil
 	}
 }
 

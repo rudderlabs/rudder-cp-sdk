@@ -11,6 +11,7 @@ import (
 
 	"github.com/rudderlabs/rudder-cp-sdk/identity"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
+	"github.com/rudderlabs/rudder-cp-sdk/tokenfile"
 )
 
 type Client struct {
@@ -20,6 +21,9 @@ type Client struct {
 	// Secrets controls whether account secrets are embedded in workspace configs responses.
 	// If empty, the control plane's default applies.
 	Secrets string
+	// IdentityToken is a workload identity token, sent as a Bearer token instead of the namespace secret.
+	// If nil, the namespace secret is sent.
+	IdentityToken *tokenfile.Token
 }
 
 func (c *Client) GetWorkspaceConfigs(ctx context.Context, object any, updatedAfter time.Time) error {
@@ -57,6 +61,10 @@ func (c *Client) GetWithAuth(ctx context.Context, path string, queryOpts ...base
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(c.Identity.Secret, "")
+	if c.IdentityToken != nil {
+		req.Header.Set("Authorization", "Bearer "+c.IdentityToken.Get())
+	} else {
+		req.SetBasicAuth(c.Identity.Secret, "")
+	}
 	return req, nil
 }

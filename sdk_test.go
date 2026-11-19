@@ -5,9 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"iter"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -20,6 +23,7 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/diff"
 	"github.com/rudderlabs/rudder-cp-sdk/modelv2"
 	"github.com/rudderlabs/rudder-cp-sdk/poller"
+	"github.com/rudderlabs/rudder-cp-sdk/tokenfile"
 )
 
 const updatedAfterTimeFormat = "2006-01-02T15:04:05.000Z"
@@ -345,6 +349,158 @@ func TestSecrets(t *testing.T) {
 		)
 		require.ErrorContains(t, err, `invalid secrets option: "invalid"`)
 	})
+}
+
+func TestIdentityToken(t *testing.T) {
+	type received struct{ bearer, user string }
+	newServer := func(t *testing.T, requests *[]received, firstStatus int) *httptest.Server {
+		t.Helper()
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, _, _ := r.BasicAuth()
+			bearer, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if !ok {
+				bearer = ""
+			}
+			*requests = append(*requests, received{bearer: bearer, user: user})
+			if len(*requests) == 1 && firstStatus != http.StatusOK {
+				w.WriteHeader(firstStatus)
+				return
+			}
+			body := `{"workspaces":{}}`
+			if r.URL.Path == "/configuration/v2/namespaces/test-namespace/workspace-ids" {
+				body = `{"data":[]}`
+			}
+			_, err := w.Write([]byte(body))
+			assert.NoError(t, err)
+		}))
+		t.Cleanup(ts.Close)
+		return ts
+	}
+	fetchBoth := func(t *testing.T, cpSDK *ControlPlane) {
+		t.Helper()
+		require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+		_, err := cpSDK.GetNamespaceWorkspaces(context.Background())
+		require.NoError(t, err)
+	}
+
+	t.Run("workspace identity", func(t *testing.T) {
+		tokenOption := WithIdentityToken(tokenfile.New("token-file"))
+		_, err := New(WithWorkspaceIdentity("token"), tokenOption)
+		require.ErrorIs(t, err, ErrIdentityTokenWorkspaceIdentity, "New should refuse an identity token set after a workspace identity")
+		_, err = New(tokenOption, WithWorkspaceIdentity("token"))
+		require.ErrorIs(t, err, ErrIdentityTokenWorkspaceIdentity, "New should refuse an identity token set before a workspace identity")
+	})
+
+	t.Run("empty file", func(t *testing.T) {
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte(" \n"), 0o600))
+		_, err := New(
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityToken(tokenfile.New(tokenFile)),
+		)
+		require.ErrorContains(t, err, "is empty", "New should fail when the token file holds only whitespace")
+	})
+
+	t.Run("unloaded token on a missing file", func(t *testing.T) {
+		_, err := New(
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityToken(tokenfile.New(filepath.Join(t.TempDir(), "missing"))),
+		)
+		require.ErrorIs(t, err, fs.ErrNotExist, "New should fail with the read error when the token file is missing")
+	})
+
+	t.Run("caller-loaded token", func(t *testing.T) {
+		var requests []received
+		ts := newServer(t, &requests, http.StatusOK)
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
+		token := tokenfile.New(tokenFile)
+		require.NoError(t, token.Load())
+
+		cpSDK, err := New(
+			WithBaseUrl(ts.URL),
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityToken(token),
+		)
+		require.NoError(t, err)
+
+		fetchBoth(t, cpSDK)
+		require.Equal(t, []received{{bearer: "token-1"}, {bearer: "token-1"}}, requests)
+	})
+
+	t.Run("file content replaces the secret and is reused briefly", func(t *testing.T) {
+		var requests []received
+		ts := newServer(t, &requests, http.StatusOK)
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1\n"), 0o600))
+
+		cpSDK, err := New(
+			WithBaseUrl(ts.URL),
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityToken(tokenfile.New(tokenFile)),
+			WithRequestDoer(http.DefaultClient),
+		)
+		require.NoError(t, err)
+
+		fetchBoth(t, cpSDK)
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-2"), 0o600))
+		fetchBoth(t, cpSDK)
+
+		require.Equal(t, []received{
+			{bearer: "token-1"},
+			{bearer: "token-1"},
+			{bearer: "token-1"},
+			{bearer: "token-1"},
+		}, requests, "a rotation within the reuse window is not read yet")
+	})
+
+	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden} {
+		t.Run(fmt.Sprintf("a token refused with %d is sent again instead of the namespace secret", status), func(t *testing.T) {
+			var requests []received
+			ts := newServer(t, &requests, status)
+			tokenFile := filepath.Join(t.TempDir(), "token")
+			require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
+
+			cpSDK, err := New(
+				WithBaseUrl(ts.URL),
+				WithNamespaceIdentity("test-namespace", "test-secret"),
+				WithIdentityToken(tokenfile.New(tokenFile)),
+			)
+			require.NoError(t, err)
+
+			err = cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{})
+			statusErr, ok := errors.AsType[*UnexpectedStatusCodeError](err)
+			require.True(t, ok, "the first request should fail with the status code error, got %v", err)
+			require.Equal(t, status, statusErr.StatusCode)
+			require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+
+			require.Equal(t, []received{{bearer: "token-1"}, {bearer: "token-1"}}, requests,
+				"both requests should carry the token and never fall back to the namespace secret")
+		})
+	}
+
+	for _, tc := range []struct {
+		name    string
+		options []Option
+	}{
+		{name: "not set"},
+		{name: "nil token", options: []Option{WithIdentityToken(nil)}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests []received
+			ts := newServer(t, &requests, http.StatusOK)
+
+			cpSDK, err := New(append([]Option{
+				WithBaseUrl(ts.URL),
+				WithNamespaceIdentity("test-namespace", "test-secret"),
+			}, tc.options...)...)
+			require.NoError(t, err, "New should succeed when no identity token is set")
+
+			fetchBoth(t, cpSDK)
+			require.Equal(t, []received{{user: "test-secret"}, {user: "test-secret"}}, requests,
+				"requests should use the namespace secret when no identity token is set")
+		})
+	}
 }
 
 func TestIncrementalDefinitions(t *testing.T) {

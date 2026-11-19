@@ -13,6 +13,7 @@ import (
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/base"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/namespace"
 	"github.com/rudderlabs/rudder-cp-sdk/internal/clients/workspace"
+	"github.com/rudderlabs/rudder-cp-sdk/tokenfile"
 )
 
 const (
@@ -39,6 +40,7 @@ type ControlPlane struct {
 		httpClient             RequestDoer
 		secrets                Secrets
 		incrementalDefinitions bool
+		identityToken          *tokenfile.Token
 	}
 }
 
@@ -64,6 +66,14 @@ func New(options ...Option) (*ControlPlane, error) {
 			return nil, err
 		}
 	}
+	if cp.config.identityToken != nil {
+		if cp.config.workspaceIdentity != nil {
+			return nil, ErrIdentityTokenWorkspaceIdentity
+		}
+		if err := cp.config.identityToken.Load(); err != nil {
+			return nil, fmt.Errorf("loading identity token: %w", err)
+		}
+	}
 	if cp.config.httpClient == nil {
 		cp.config.httpClient = httputil.DefaultHttpClient()
 	}
@@ -84,9 +94,10 @@ func New(options ...Option) (*ControlPlane, error) {
 			baseUrl, _ = url.Parse(defaultNamespaceIdentityBaseURL)
 		}
 		cp.Client = &namespace.Client{
-			Client:   &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
-			Identity: cp.config.namespaceIdentity,
-			Secrets:  string(cp.config.secrets),
+			Client:        &base.Client{HTTPClient: cp.config.httpClient, BaseURL: baseUrl, IncrementalDefinitions: cp.config.incrementalDefinitions},
+			Identity:      cp.config.namespaceIdentity,
+			Secrets:       string(cp.config.secrets),
+			IdentityToken: cp.config.identityToken,
 		}
 	} else {
 		return nil, fmt.Errorf("workspace or namespace identity must be set")
