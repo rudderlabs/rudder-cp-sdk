@@ -2,7 +2,6 @@ package cpsdk
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -41,7 +40,6 @@ type ControlPlane struct {
 		httpClient             RequestDoer
 		secrets                Secrets
 		incrementalDefinitions bool
-		identityTokenFile      string
 		identityToken          *tokenfile.Token
 	}
 }
@@ -68,20 +66,13 @@ func New(options ...Option) (*ControlPlane, error) {
 			return nil, err
 		}
 	}
-	if (cp.config.identityTokenFile != "" || cp.config.identityToken != nil) && cp.config.workspaceIdentity != nil {
-		return nil, ErrIdentityTokenWorkspaceIdentity
-	}
-	if cp.config.identityTokenFile != "" {
-		if cp.config.identityToken != nil {
-			return nil, ErrIdentityTokenMutuallyExclusive
+	if cp.config.identityToken != nil {
+		if cp.config.workspaceIdentity != nil {
+			return nil, ErrIdentityTokenWorkspaceIdentity
 		}
-		cp.config.identityToken = tokenfile.New(cp.config.identityTokenFile)
 		if err := cp.config.identityToken.Load(); err != nil {
 			return nil, fmt.Errorf("loading identity token: %w", err)
 		}
-	}
-	if cp.config.identityToken != nil && cp.config.identityToken.Get() == "" {
-		return nil, errors.New("identity token not loaded")
 	}
 	if cp.config.httpClient == nil {
 		cp.config.httpClient = httputil.DefaultHttpClient()

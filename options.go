@@ -16,7 +16,8 @@ var ErrIdentityMutuallyExclusive = fmt.Errorf("cannot set both workspace and nam
 // combined with a workspace identity.
 var ErrIdentityTokenWorkspaceIdentity = fmt.Errorf("identity token is only supported with namespace identity")
 
-// ErrIdentityTokenMutuallyExclusive is returned by [New] when both [WithIdentityTokenFile] and [WithIdentityToken] are set.
+// ErrIdentityTokenMutuallyExclusive is returned by [New] when more than one identity token is set, through
+// [WithIdentityTokenFile] or [WithIdentityToken].
 var ErrIdentityTokenMutuallyExclusive = fmt.Errorf("cannot set both identity token file and identity token")
 
 func WithWorkspaceIdentity(workspaceToken string) Option {
@@ -72,17 +73,23 @@ func WithSecrets(s Secrets) Option {
 // An empty path sets no token. Combined with a workspace identity, [New] returns [ErrIdentityTokenWorkspaceIdentity],
 // and combined with [WithIdentityToken], [ErrIdentityTokenMutuallyExclusive].
 func WithIdentityTokenFile(path string) Option {
-	return func(cp *ControlPlane) error {
-		cp.config.identityTokenFile = path
-		return nil
+	if path == "" {
+		return WithIdentityToken(nil)
 	}
+	return WithIdentityToken(tokenfile.New(path))
 }
 
-// WithIdentityToken is like [WithIdentityTokenFile] for a token the caller has already loaded with
-// [tokenfile.Token.Load], so it can be shared with other clients. A nil token sets no token. [New] returns an error
-// if the token has no value.
+// WithIdentityToken is like [WithIdentityTokenFile] for a [tokenfile.Token] that can be shared with other clients.
+// [New] loads it with [tokenfile.Token.Load], so it returns an error if the file can't be read or is empty; the
+// caller may have loaded it already. A nil token sets no token.
 func WithIdentityToken(t *tokenfile.Token) Option {
 	return func(cp *ControlPlane) error {
+		if t == nil {
+			return nil
+		}
+		if cp.config.identityToken != nil {
+			return ErrIdentityTokenMutuallyExclusive
+		}
 		cp.config.identityToken = t
 		return nil
 	}
