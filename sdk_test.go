@@ -3,12 +3,10 @@ package cpsdk
 import (
 	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/fs"
 	"iter"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -380,72 +378,6 @@ func TestIdentityToken(t *testing.T) {
 		_, err := cpSDK.GetNamespaceWorkspaces(context.Background())
 		require.NoError(t, err)
 	}
-
-	t.Run("redirects", func(t *testing.T) {
-		tokenFile := filepath.Join(t.TempDir(), "token")
-		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
-
-		var finalAuthorization string
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if to := r.URL.Query().Get("redirect"); to != "" {
-				http.Redirect(w, r, to+r.URL.Path, http.StatusFound)
-				return
-			}
-			finalAuthorization = r.Header.Get("Authorization")
-			_, err := w.Write([]byte(`{"workspaces":{}}`))
-			assert.NoError(t, err)
-		})
-		// the helper splits the host on commas into the certificate's names
-		tlsServer := httptest.NewTLSServer("sub.example.com,example.org", handler)
-		t.Cleanup(tlsServer.Close)
-		plainServer := httptest.NewServer(handler)
-		t.Cleanup(plainServer.Close)
-		// https://example.com is the origin: port 80 reaches the plain server and any other address the TLS one,
-		// so a redirect can change only the scheme, the port or the host
-		transport := tlsServer.Client().Transport.(*http.Transport).Clone()
-		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			to := tlsServer.Listener.Addr().String()
-			if strings.HasSuffix(addr, ":80") {
-				to = plainServer.Listener.Addr().String()
-			}
-			return (&net.Dialer{}).DialContext(ctx, network, to)
-		}
-
-		basic := "Basic " + base64.StdEncoding.EncodeToString([]byte("test-secret:"))
-		for _, tc := range []struct {
-			name, to, want   string
-			withoutTokenFile bool
-			options          []Option
-		}{
-			{name: "same origin", to: "https://example.com", want: "Bearer token-1"},
-			{name: "same origin with the default port", to: "https://example.com:443", want: "Bearer token-1"},
-			{name: "same origin with an upper-case host", to: "https://EXAMPLE.com", want: "Bearer token-1"},
-			{name: "scheme downgrade", to: "http://example.com"},
-			{name: "different port", to: "https://example.com:8443"},
-			{name: "subdomain", to: "https://sub.example.com"},
-			{name: "different host", to: "https://example.org"},
-			// a caller-supplied client keeps its own redirect policy, and net/http keeps the header for a subdomain
-			{name: "subdomain with a custom client", to: "https://sub.example.com", want: "Bearer token-1", options: []Option{WithRequestDoer(&http.Client{})}},
-			{name: "same origin without a token file", to: "https://example.com", want: basic, withoutTokenFile: true},
-			{name: "scheme downgrade without a token file", to: "http://example.com", withoutTokenFile: true},
-		} {
-			t.Run(tc.name, func(t *testing.T) {
-				finalAuthorization = "not reached"
-				options := []Option{
-					WithBaseUrl("https://example.com?redirect=" + tc.to),
-					WithNamespaceIdentity("test-namespace", "test-secret"),
-				}
-				if !tc.withoutTokenFile {
-					options = append(options, WithIdentityTokenFile(tokenFile))
-				}
-				cpSDK, err := New(append(options, tc.options...)...)
-				require.NoError(t, err)
-				cpSDK.config.httpClient.(*http.Client).Transport = transport
-				require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
-				require.Equal(t, tc.want, finalAuthorization)
-			})
-		}
-	})
 
 	t.Run("workspace identity", func(t *testing.T) {
 		for _, tokenOption := range []Option{WithIdentityTokenFile("token-file"), WithIdentityToken(tokenfile.New("token-file"))} {

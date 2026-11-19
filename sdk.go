@@ -2,11 +2,9 @@ package cpsdk
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/rudderlabs/rudder-go-kit/httputil"
@@ -82,9 +80,7 @@ func New(options ...Option) (*ControlPlane, error) {
 		}
 	}
 	if cp.config.httpClient == nil {
-		client := httputil.DefaultHttpClient()
-		client.CheckRedirect = keepAuthorizationOnOrigin
-		cp.config.httpClient = client
+		cp.config.httpClient = httputil.DefaultHttpClient()
 	}
 	// set client based on identity
 	if cp.config.workspaceIdentity != nil {
@@ -112,32 +108,4 @@ func New(options ...Option) (*ControlPlane, error) {
 		return nil, fmt.Errorf("workspace or namespace identity must be set")
 	}
 	return cp, nil
-}
-
-// keepAuthorizationOnOrigin follows up to 10 redirects like net/http's default policy and removes the Authorization
-// header when a redirect leaves the scheme, host or port of the original request, where net/http only removes it for
-// a different host.
-func keepAuthorizationOnOrigin(req *http.Request, via []*http.Request) error {
-	if len(via) >= 10 {
-		return errors.New("stopped after 10 redirects")
-	}
-	to, from := req.URL, via[0].URL
-	if !strings.EqualFold(to.Scheme, from.Scheme) || !strings.EqualFold(to.Hostname(), from.Hostname()) || effectivePort(to) != effectivePort(from) {
-		req.Header.Del("Authorization")
-	}
-	return nil
-}
-
-// effectivePort returns the URL's port, or the default port of its scheme when it has none.
-func effectivePort(u *url.URL) string {
-	if port := u.Port(); port != "" {
-		return port
-	}
-	switch strings.ToLower(u.Scheme) {
-	case "http":
-		return "80"
-	case "https":
-		return "443"
-	}
-	return ""
 }

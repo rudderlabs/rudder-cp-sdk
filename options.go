@@ -87,9 +87,6 @@ func WithIdentityToken(t *tokenfile.Token) Option {
 	}
 }
 
-// WithRequestDoer sets the RequestDoer used to send control plane requests.
-// Without it, the SDK uses its own HTTP client, which follows redirects but sends the Authorization header only while
-// the scheme, host and port match the original request. A RequestDoer set here applies its own redirect policy.
 func WithRequestDoer(reqDoer RequestDoer) Option {
 	return func(cp *ControlPlane) error {
 		cp.config.httpClient = reqDoer
