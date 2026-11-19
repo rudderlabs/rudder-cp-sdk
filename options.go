@@ -62,7 +62,8 @@ func WithSecrets(s Secrets) Option {
 }
 
 // WithIdentityToken sets a workload identity token, read from a file, sent as "Authorization: Bearer <token>"
-// instead of the namespace secret on namespace identity requests; use tokenfile.New(path) for a token file path.
+// instead of the namespace secret on namespace identity requests; use [tokenfile.New] for a token file path.
+// A nil token sets none, and a later call replaces an earlier one.
 // Set it only once the control plane accepts the token: a refused token gets a 401 with no fallback to the secret.
 // [New] loads it with [tokenfile.Token.Load], so it returns an error if the file can't be read or is empty; the
 // caller may have loaded it already. The file is then read again once the token's reuse window has passed, so a
