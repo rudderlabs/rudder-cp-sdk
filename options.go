@@ -12,13 +12,8 @@ type Option func(*ControlPlane) error
 
 var ErrIdentityMutuallyExclusive = fmt.Errorf("cannot set both workspace and namespace identity")
 
-// ErrIdentityTokenWorkspaceIdentity is returned by [New] when [WithIdentityTokenFile] or [WithIdentityToken] is
-// combined with a workspace identity.
+// ErrIdentityTokenWorkspaceIdentity is returned by [New] when [WithIdentityToken] is combined with a workspace identity.
 var ErrIdentityTokenWorkspaceIdentity = fmt.Errorf("identity token is only supported with namespace identity")
-
-// ErrIdentityTokenMutuallyExclusive is returned by [New] when more than one identity token is set, through
-// [WithIdentityTokenFile] or [WithIdentityToken].
-var ErrIdentityTokenMutuallyExclusive = fmt.Errorf("cannot set both identity token file and identity token")
 
 func WithWorkspaceIdentity(workspaceToken string) Option {
 	return func(cp *ControlPlane) error {
@@ -66,32 +61,15 @@ func WithSecrets(s Secrets) Option {
 	}
 }
 
-// WithIdentityTokenFile sets the path of a file holding a workload identity token, sent as
-// "Authorization: Bearer <token>" instead of the namespace secret on namespace identity requests.
+// WithIdentityToken sets a workload identity token, read from a file, sent as "Authorization: Bearer <token>"
+// instead of the namespace secret on namespace identity requests; use tokenfile.New(path) for a token file path.
 // Set it only once the control plane accepts the token: a refused token gets a 401 with no fallback to the secret.
-// [New] reads the file and returns an error if it can't be read or is empty. The file is then read again once the
-// token's reuse window has passed, so a rotated token is picked up without restarting; see [tokenfile.Token.Get].
-// An empty path sets no token and clears any token set by an earlier option. Combined with a workspace identity, [New] returns [ErrIdentityTokenWorkspaceIdentity],
-// and combined with [WithIdentityToken], [ErrIdentityTokenMutuallyExclusive].
-func WithIdentityTokenFile(path string) Option {
-	if path == "" {
-		return WithIdentityToken(nil)
-	}
-	return WithIdentityToken(tokenfile.New(path))
-}
-
-// WithIdentityToken is like [WithIdentityTokenFile] for a [tokenfile.Token] that can be shared with other clients.
 // [New] loads it with [tokenfile.Token.Load], so it returns an error if the file can't be read or is empty; the
-// caller may have loaded it already. A nil token sets no token and clears any token set by an earlier option.
+// caller may have loaded it already. The file is then read again once the token's reuse window has passed, so a
+// rotated token is picked up without restarting; see [tokenfile.Token.Get]. Combined with a workspace identity,
+// [New] returns [ErrIdentityTokenWorkspaceIdentity].
 func WithIdentityToken(t *tokenfile.Token) Option {
 	return func(cp *ControlPlane) error {
-		if t == nil {
-			cp.config.identityToken = nil
-			return nil
-		}
-		if cp.config.identityToken != nil {
-			return ErrIdentityTokenMutuallyExclusive
-		}
 		cp.config.identityToken = t
 		return nil
 	}

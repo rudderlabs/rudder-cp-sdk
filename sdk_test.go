@@ -384,29 +384,11 @@ func TestIdentityToken(t *testing.T) {
 	}
 
 	t.Run("workspace identity", func(t *testing.T) {
-		for _, tokenOption := range []Option{WithIdentityTokenFile("token-file"), WithIdentityToken(tokenfile.New("token-file"))} {
-			_, err := New(WithWorkspaceIdentity("token"), tokenOption)
-			require.ErrorIs(t, err, ErrIdentityTokenWorkspaceIdentity, "New should refuse an identity token set after a workspace identity")
-			_, err = New(tokenOption, WithWorkspaceIdentity("token"))
-			require.ErrorIs(t, err, ErrIdentityTokenWorkspaceIdentity, "New should refuse an identity token set before a workspace identity")
-		}
-	})
-
-	t.Run("token file and token", func(t *testing.T) {
-		_, err := New(
-			WithNamespaceIdentity("test-namespace", "test-secret"),
-			WithIdentityTokenFile("token-file"),
-			WithIdentityToken(tokenfile.New("token-file")),
-		)
-		require.ErrorIs(t, err, ErrIdentityTokenMutuallyExclusive, "New should refuse both a token file and a token")
-	})
-
-	t.Run("missing file", func(t *testing.T) {
-		_, err := New(
-			WithNamespaceIdentity("test-namespace", "test-secret"),
-			WithIdentityTokenFile(filepath.Join(t.TempDir(), "missing")),
-		)
-		require.ErrorIs(t, err, fs.ErrNotExist)
+		tokenOption := WithIdentityToken(tokenfile.New("token-file"))
+		_, err := New(WithWorkspaceIdentity("token"), tokenOption)
+		require.ErrorIs(t, err, ErrIdentityTokenWorkspaceIdentity, "New should refuse an identity token set after a workspace identity")
+		_, err = New(tokenOption, WithWorkspaceIdentity("token"))
+		require.ErrorIs(t, err, ErrIdentityTokenWorkspaceIdentity, "New should refuse an identity token set before a workspace identity")
 	})
 
 	t.Run("empty file", func(t *testing.T) {
@@ -414,7 +396,7 @@ func TestIdentityToken(t *testing.T) {
 		require.NoError(t, os.WriteFile(tokenFile, []byte(" \n"), 0o600))
 		_, err := New(
 			WithNamespaceIdentity("test-namespace", "test-secret"),
-			WithIdentityTokenFile(tokenFile),
+			WithIdentityToken(tokenfile.New(tokenFile)),
 		)
 		require.ErrorContains(t, err, "is empty", "New should fail when the token file holds only whitespace")
 	})
@@ -455,7 +437,7 @@ func TestIdentityToken(t *testing.T) {
 		cpSDK, err := New(
 			WithBaseUrl(ts.URL),
 			WithNamespaceIdentity("test-namespace", "test-secret"),
-			WithIdentityTokenFile(tokenFile),
+			WithIdentityToken(tokenfile.New(tokenFile)),
 			WithRequestDoer(http.DefaultClient),
 		)
 		require.NoError(t, err)
@@ -482,7 +464,7 @@ func TestIdentityToken(t *testing.T) {
 			cpSDK, err := New(
 				WithBaseUrl(ts.URL),
 				WithNamespaceIdentity("test-namespace", "test-secret"),
-				WithIdentityTokenFile(tokenFile),
+				WithIdentityToken(tokenfile.New(tokenFile)),
 			)
 			require.NoError(t, err)
 
@@ -502,10 +484,7 @@ func TestIdentityToken(t *testing.T) {
 		options []Option
 	}{
 		{name: "not set"},
-		{name: "empty path", options: []Option{WithIdentityTokenFile("")}},
 		{name: "nil token", options: []Option{WithIdentityToken(nil)}},
-		{name: "empty path after a token file", options: []Option{WithIdentityTokenFile("token-file"), WithIdentityTokenFile("")}},
-		{name: "nil token after a token", options: []Option{WithIdentityToken(tokenfile.New("token-file")), WithIdentityToken(nil)}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var requests []received
@@ -515,11 +494,11 @@ func TestIdentityToken(t *testing.T) {
 				WithBaseUrl(ts.URL),
 				WithNamespaceIdentity("test-namespace", "test-secret"),
 			}, tc.options...)...)
-			require.NoError(t, err, "New should succeed when no identity token is set or a later option cleared it")
+			require.NoError(t, err, "New should succeed when no identity token is set")
 
 			fetchBoth(t, cpSDK)
 			require.Equal(t, []received{{user: "test-secret"}, {user: "test-secret"}}, requests,
-				"requests should use the namespace secret when no identity token is set or a later option cleared it")
+				"requests should use the namespace secret when no identity token is set")
 		})
 	}
 }
