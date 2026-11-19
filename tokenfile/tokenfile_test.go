@@ -51,10 +51,10 @@ func TestGet(t *testing.T) {
 
 		write("token-2")
 		time.Sleep(maxAge - time.Nanosecond)
-		require.Equal(t, "token-1", tok.Get(), "reused while under a minute old")
+		require.Equal(t, "token-1", tok.Get(), "reused while under maxAge old")
 
 		time.Sleep(time.Nanosecond)
-		require.Equal(t, "token-2", tok.Get(), "read again once a minute old")
+		require.Equal(t, "token-2", tok.Get(), "read again once maxAge old")
 
 		write(" \n")
 		time.Sleep(maxAge)

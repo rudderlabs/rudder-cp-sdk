@@ -10,9 +10,8 @@ import (
 	"time"
 )
 
-// maxAge is how long a token read from the file is reused. The kubelet rewrites the file at about 80% of the token's
-// lifetime (8 of 10 minutes by default), so a token read under a minute ago is still valid.
-const maxAge = time.Minute
+// The kubelet can leave a token close to its expiry in the file, so it is reused only briefly; a re-read is a local file read.
+const maxAge = 10 * time.Second
 
 // Token is a token read from a file. It is safe for concurrent use.
 type Token struct {
@@ -48,7 +47,7 @@ func (t *Token) load() error {
 	return nil
 }
 
-// Get returns the token, reading the file again once the token is a minute old. A failed or empty read keeps the
+// Get returns the token, reading the file again once the token is 10 seconds old. A failed or empty read keeps the
 // last token, which is retried on the next call, so Get never returns an empty token after a successful [Token.Load].
 func (t *Token) Get() string {
 	t.mu.Lock()

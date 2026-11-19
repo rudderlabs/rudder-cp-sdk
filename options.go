@@ -69,7 +69,7 @@ func WithSecrets(s Secrets) Option {
 // WithIdentityTokenFile sets the path of a file holding a workload identity token, sent as
 // "Authorization: Bearer <token>" instead of the namespace secret on namespace identity requests.
 // [New] reads the file and returns an error if it can't be read or is empty. The file is then read again once the
-// token in use is a minute old, so a rotated token is picked up without restarting; see [tokenfile.Token.Get].
+// token in use is 10 seconds old, so a rotated token is picked up without restarting; see [tokenfile.Token.Get].
 // An empty path sets no token and clears any token set by an earlier option. Combined with a workspace identity, [New] returns [ErrIdentityTokenWorkspaceIdentity],
 // and combined with [WithIdentityToken], [ErrIdentityTokenMutuallyExclusive].
 func WithIdentityTokenFile(path string) Option {
