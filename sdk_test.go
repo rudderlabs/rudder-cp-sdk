@@ -475,6 +475,8 @@ func TestIdentityToken(t *testing.T) {
 		{name: "not set"},
 		{name: "empty path", options: []Option{WithIdentityTokenFile("")}},
 		{name: "nil token", options: []Option{WithIdentityToken(nil)}},
+		{name: "empty path after a token file", options: []Option{WithIdentityTokenFile("token-file"), WithIdentityTokenFile("")}},
+		{name: "nil token after a token", options: []Option{WithIdentityToken(tokenfile.New("token-file")), WithIdentityToken(nil)}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var requests []received
@@ -484,10 +486,11 @@ func TestIdentityToken(t *testing.T) {
 				WithBaseUrl(ts.URL),
 				WithNamespaceIdentity("test-namespace", "test-secret"),
 			}, tc.options...)...)
-			require.NoError(t, err)
+			require.NoError(t, err, "New should succeed when no identity token is set or a later option cleared it")
 
 			fetchBoth(t, cpSDK)
-			require.Equal(t, []received{{user: "test-secret"}, {user: "test-secret"}}, requests)
+			require.Equal(t, []received{{user: "test-secret"}, {user: "test-secret"}}, requests,
+				"requests should use the namespace secret when no identity token is set or a later option cleared it")
 		})
 	}
 }
