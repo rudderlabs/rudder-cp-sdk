@@ -468,6 +468,38 @@ func TestIdentityToken(t *testing.T) {
 		}, requests, "a rotation within the reuse window is not read yet")
 	})
 
+	t.Run("a refused token is sent again instead of the namespace secret", func(t *testing.T) {
+		var authorizations []string
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authorizations = append(authorizations, r.Header.Get("Authorization"))
+			if len(authorizations) == 1 {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			_, err := w.Write([]byte(`{"workspaces":{}}`))
+			assert.NoError(t, err)
+		}))
+		t.Cleanup(ts.Close)
+		tokenFile := filepath.Join(t.TempDir(), "token")
+		require.NoError(t, os.WriteFile(tokenFile, []byte("token-1"), 0o600))
+
+		cpSDK, err := New(
+			WithBaseUrl(ts.URL),
+			WithNamespaceIdentity("test-namespace", "test-secret"),
+			WithIdentityTokenFile(tokenFile),
+		)
+		require.NoError(t, err)
+
+		err = cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{})
+		statusErr, ok := errors.AsType[*UnexpectedStatusCodeError](err)
+		require.True(t, ok, "the first request should fail with the status code error, got %v", err)
+		require.Equal(t, http.StatusUnauthorized, statusErr.StatusCode)
+		require.NoError(t, cpSDK.GetWorkspaceConfigs(context.Background(), &modelv2.WorkspaceConfigs{}, time.Time{}))
+
+		require.Equal(t, []string{"Bearer token-1", "Bearer token-1"}, authorizations,
+			"both requests should carry the token and never fall back to the namespace secret")
+	})
+
 	for _, tc := range []struct {
 		name    string
 		options []Option
