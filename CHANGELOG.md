@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.5.0...v1.6.0) (2026-11-19)
+
+
+### Features
+
+* optionally send a workload identity token from a file ([#222](https://github.com/rudderlabs/rudder-cp-sdk/issues/222)) ([d517387](https://github.com/rudderlabs/rudder-cp-sdk/commit/d51738752cee2961fdf7fde599bd8ceb6a1b172c))
+
 ## [1.5.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.4.2...v1.5.0) (2026-10-26)
 
 
