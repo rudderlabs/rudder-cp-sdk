@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.6.0...v1.6.1) (2026-11-23)
+
+
+### Miscellaneous
+
+* **ci:** remove codecov ([#227](https://github.com/rudderlabs/rudder-cp-sdk/issues/227)) ([d7cd748](https://github.com/rudderlabs/rudder-cp-sdk/commit/d7cd748eb65ea486f442768441c5142af4c2952a))
+
 ## [1.6.0](https://github.com/rudderlabs/rudder-cp-sdk/compare/v1.5.0...v1.6.0) (2026-11-19)
 
 
